@@ -243,8 +243,8 @@ export default function SlipItemsTable({
     );
   }
 
-  function addRow() {
-    setRows((prev) => [...prev, emptyRow()]);
+  function addRows(count: number) {
+    setRows((prev) => [...prev, ...Array.from({ length: count }, () => emptyRow())]);
   }
 
   function removeRow(key: string) {
@@ -453,13 +453,29 @@ export default function SlipItemsTable({
       </div>
 
       {!readOnly && (
-        <button
-          type="button"
-          onClick={addRow}
-          className="rounded border border-gray-300 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50"
-        >
-          + 품목 추가
-        </button>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => addRows(1)}
+            className="rounded border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+          >
+            + 1줄 추가
+          </button>
+          <button
+            type="button"
+            onClick={() => addRows(5)}
+            className="rounded border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+          >
+            + 5줄 추가
+          </button>
+          <button
+            type="button"
+            onClick={() => addRows(10)}
+            className="rounded border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+          >
+            + 10줄 추가
+          </button>
+        </div>
       )}
 
       <p className="text-sm font-medium text-gray-900">합계금액: {total.toLocaleString()}원</p>
