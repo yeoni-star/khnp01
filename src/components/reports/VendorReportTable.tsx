@@ -2,7 +2,12 @@
 
 import { useState } from "react";
 import PrintButton from "./PrintButton";
-import { formatReportIssueDate, type VendorReport } from "@/lib/vendor-report";
+import type { VendorReport } from "@/lib/vendor-report";
+
+function formatReportIssueDate(year: number, month: number): string {
+  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  return `${String(year).slice(-2)}.${month}.${lastDay}`;
+}
 
 export default function VendorReportTable({
   vendorId,
