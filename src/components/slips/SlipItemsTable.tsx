@@ -321,6 +321,14 @@ export default function SlipItemsTable({
 
   const total = rows.reduce((sum, r) => sum + (Number(r.quantity) || 0) * (Number(r.unitPrice) || 0), 0);
 
+  const hasMismatch = rows.some((row) => {
+    const contractItem = contractItems.find((c) => c.id === row.matchedContractItemId);
+    if (!contractItem) return false;
+    const isPriceDiff = String(contractItem.unitPrice) !== row.unitPrice;
+    const isUnitDiff = normalize(contractItem.unit) !== normalize(row.unit);
+    return isPriceDiff || isUnitDiff;
+  });
+
   return (
     <div className="space-y-4">
       <div className={previewUrl ? "grid gap-4 md:grid-cols-[320px_1fr]" : ""}>
@@ -535,13 +543,17 @@ export default function SlipItemsTable({
       {message && (
         <p className={`text-sm ${message.type === "error" ? "text-red-600" : "text-green-600"}`}>{message.text}</p>
       )}
+      
+      {hasMismatch && !readOnly && (
+        <p className="text-sm font-medium text-red-600">⚠️ 계약 내용과 다른 항목(빨간색 표시)을 계약과 동일하게 수정해야 저장할 수 있습니다.</p>
+      )}
 
       {!readOnly && (
         <div className="flex gap-2">
           <button
             type="button"
             onClick={handleSaveDraft}
-            disabled={pending}
+            disabled={pending || hasMismatch}
             className="rounded border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
           >
             임시저장
@@ -549,7 +561,7 @@ export default function SlipItemsTable({
           <button
             type="button"
             onClick={handleConfirm}
-            disabled={pending}
+            disabled={pending || hasMismatch}
             className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
           >
             확정
