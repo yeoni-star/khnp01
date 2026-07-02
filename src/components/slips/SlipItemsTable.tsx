@@ -278,16 +278,20 @@ export default function SlipItemsTable({
     return JSON.stringify(
       rows
         .filter((r) => r.itemName.trim())
-        .map((r) => ({
-          itemName: r.itemName.trim(),
-          category: r.category || null,
-          unit: r.unit.trim(),
-          quantity: Number(r.quantity) || 0,
-          unitPrice: Number(r.unitPrice) || 0,
-          matchedContractItemId: r.matchedContractItemId,
-          matchType: r.matchType,
-          priceOverridden: r.priceOverridden,
-        }))
+        .map((r) => {
+          const matched = contractItems.find(c => c.id === r.matchedContractItemId);
+          const isPriceDiff = matched ? String(matched.unitPrice) !== r.unitPrice : false;
+          return {
+            itemName: r.itemName.trim(),
+            category: r.category || null,
+            unit: r.unit.trim(),
+            quantity: Number(r.quantity) || 0,
+            unitPrice: Number(r.unitPrice) || 0,
+            matchedContractItemId: r.matchedContractItemId,
+            matchType: r.matchType,
+            priceOverridden: isPriceDiff,
+          };
+        })
     );
   }
 
@@ -388,7 +392,11 @@ export default function SlipItemsTable({
           </thead>
           <tbody className="divide-y divide-gray-100">
             {rows.map((row) => {
+              const contractItem = contractItems.find(c => c.id === row.matchedContractItemId);
+              const isPriceDiff = contractItem && String(contractItem.unitPrice) !== row.unitPrice;
+              const isUnitDiff = contractItem && normalize(contractItem.unit) !== normalize(row.unit);
               const amount = (Number(row.quantity) || 0) * (Number(row.unitPrice) || 0);
+              
               return (
                 <tr key={row.key} className="align-top">
                   <td className="px-2 py-2">
@@ -404,6 +412,9 @@ export default function SlipItemsTable({
                     )}
                     {row.matchType === "FUZZY_CONFIRMED" && (
                       <p className="mt-1 text-xs text-blue-600">유사품목 확인 · 계약단가 적용</p>
+                    )}
+                    {row.matchType === "NONE" && !row.suggestion && row.itemName.trim() && (
+                      <p className="mt-1 text-xs text-gray-500">수기 입력</p>
                     )}
                     {row.suggestion && (
                       <div className="mt-1 rounded border border-amber-300 bg-amber-50 px-2 py-1 text-xs text-amber-800">
@@ -432,8 +443,11 @@ export default function SlipItemsTable({
                       value={row.unit}
                       disabled={readOnly}
                       onChange={(e) => updateRow(row.key, { unit: e.target.value })}
-                      className="w-16 rounded border border-gray-300 px-2 py-1 text-sm disabled:bg-gray-100"
+                      className={`w-16 rounded border px-2 py-1 text-sm disabled:bg-gray-100 ${
+                        isUnitDiff ? "border-red-400 bg-red-50" : "border-gray-300"
+                      }`}
                     />
+                    {isUnitDiff && <p className="mt-1 text-xs text-red-600">계약과 다름</p>}
                   </td>
                   <td className="px-2 py-2">
                     <input
@@ -451,10 +465,10 @@ export default function SlipItemsTable({
                       disabled={readOnly}
                       onChange={(e) => handlePriceChange(row.key, e.target.value)}
                       className={`w-24 rounded border px-2 py-1 text-sm disabled:bg-gray-100 ${
-                        row.priceOverridden ? "border-red-400 bg-red-50" : "border-gray-300"
+                        isPriceDiff ? "border-red-400 bg-red-50" : "border-gray-300"
                       }`}
                     />
-                    {row.priceOverridden && <p className="mt-1 text-xs text-red-600">계약단가와 다름</p>}
+                    {isPriceDiff && <p className="mt-1 text-xs text-red-600">계약단가와 다름</p>}
                   </td>
                   <td className="px-2 py-2 text-gray-700">{amount.toLocaleString()}</td>
                   <td className="px-2 py-2">
@@ -497,6 +511,21 @@ export default function SlipItemsTable({
             className="rounded border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
           >
             + 10줄 추가
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              if (confirm("입력한 내용을 모두 초기화하시겠습니까?")) {
+                setRows([emptyRow()]);
+                setOcrNote(null);
+                setMessage(null);
+                if (previewUrl) URL.revokeObjectURL(previewUrl);
+                setPreviewUrl(null);
+              }
+            }}
+            className="ml-auto rounded border border-red-300 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50"
+          >
+            입력 초기화
           </button>
         </div>
       )}
