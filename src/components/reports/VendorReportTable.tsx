@@ -173,21 +173,23 @@ export default function VendorReportTable({
               </tr>
               <tr className="bg-gray-50 text-center">
                 {displayWeeks.map((week) => (
-                  <th key={week.label} colSpan={week.dates.length} className="group relative border border-gray-400 px-1 py-1 font-medium">
-                    {week.label}
-                    <div className="absolute right-0 top-0 hidden h-full items-center gap-1 bg-gray-50 px-1 group-hover:flex print:hidden">
-                      <button
-                        onClick={() => handleRemoveCol(week.label, week.actualCount)}
-                        className="flex h-4 w-4 items-center justify-center rounded bg-gray-200 text-xs text-gray-600 hover:bg-gray-300"
-                      >
-                        -
-                      </button>
-                      <button
-                        onClick={() => handleAddCol(week.label, week.actualCount)}
-                        className="flex h-4 w-4 items-center justify-center rounded bg-gray-200 text-xs text-gray-600 hover:bg-gray-300"
-                      >
-                        +
-                      </button>
+                  <th key={week.label} colSpan={week.dates.length} className="border border-gray-400 px-1 py-1 font-medium">
+                    <div className="flex items-center justify-center gap-2">
+                      <span>{week.label}</span>
+                      <div className="flex items-center gap-1 print:hidden">
+                        <button
+                          onClick={() => handleRemoveCol(week.label, week.actualCount)}
+                          className="flex h-4 w-4 items-center justify-center rounded bg-gray-200 text-xs text-gray-600 hover:bg-gray-300"
+                        >
+                          -
+                        </button>
+                        <button
+                          onClick={() => handleAddCol(week.label, week.actualCount)}
+                          className="flex h-4 w-4 items-center justify-center rounded bg-gray-200 text-xs text-gray-600 hover:bg-gray-300"
+                        >
+                          +
+                        </button>
+                      </div>
                     </div>
                   </th>
                 ))}
