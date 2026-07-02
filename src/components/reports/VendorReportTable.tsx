@@ -15,8 +15,21 @@ export default function VendorReportTable({
   year: number;
   month: number;
   report: VendorReport;
-}) {
-  const dateColumns = report.weeks.flatMap((w) => w.dates);
+  // 4주치 고정 양식을 위해 week와 date를 패딩
+  const paddedWeeks = [...report.weeks];
+  while (paddedWeeks.length < 4) {
+    paddedWeeks.push({ label: `${paddedWeeks.length + 1}주`, dates: [] });
+  }
+
+  const displayWeeks = paddedWeeks.map((week) => {
+    const dates = [...week.dates];
+    while (dates.length < 5) {
+      dates.push(`empty-${week.label}-${dates.length}`);
+    }
+    return { ...week, dates };
+  });
+
+  const dateColumns = displayWeeks.flatMap((w) => w.dates);
   const colSpanCount = dateColumns.length || 1;
 
   return (
@@ -35,87 +48,106 @@ export default function VendorReportTable({
       </div>
 
       <div className="rounded-md border border-gray-200 bg-white p-6">
-        <div className="mb-4 flex items-start justify-between">
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900">납품보고서</h2>
-            <p className="mt-1 text-sm text-gray-600">
-              업체명 : {vendorName}
-              {categoryLabel ? `(${categoryLabel})` : ""}
-            </p>
-            <p className="text-sm text-gray-600">일자 : {formatReportIssueDate(year, month)}</p>
+        <div className="mb-4">
+          <h2 className="mb-6 text-center text-3xl font-bold tracking-widest text-gray-900 underline underline-offset-8">
+            납품보고서
+          </h2>
+          <div className="flex items-end justify-between">
+            <div className="space-y-4 text-base text-gray-800">
+              <p>
+                <span className="inline-block w-20 tracking-[0.5em]">업체명</span>: &nbsp; {vendorName}
+                {categoryLabel ? `(${categoryLabel})` : ""}
+              </p>
+              <p>
+                <span className="inline-block w-20 tracking-[0.5em]">일자</span>: &nbsp; {formatReportIssueDate(year, month)}
+              </p>
+            </div>
+            <table className="border-collapse text-center text-xs">
+              <thead>
+                <tr>
+                  <th className="w-10 border border-gray-400 bg-gray-50 py-1 font-medium text-gray-700" rowSpan={3}>
+                    결<br />
+                    <br />
+                    재
+                  </th>
+                  <th className="w-20 border border-gray-400 bg-gray-50 py-1 font-medium text-gray-700">담당</th>
+                  <th className="w-20 border border-gray-400 bg-gray-50 py-1 font-medium text-gray-700">차장</th>
+                </tr>
+                <tr>
+                  <td className="h-12 border border-gray-400" />
+                  <td className="h-12 border border-gray-400" />
+                </tr>
+                <tr>
+                  <td className="border border-gray-400 py-1 bg-gray-50" />
+                  <td className="border border-gray-400 py-1 bg-gray-50" />
+                </tr>
+              </thead>
+            </table>
           </div>
-          <table className="border-collapse text-center text-xs">
-            <thead>
-              <tr>
-                <th className="border border-gray-400 px-4 py-1 font-medium" rowSpan={2}>
-                  결재
-                </th>
-                <th className="border border-gray-400 px-4 py-1 font-medium">담당</th>
-                <th className="border border-gray-400 px-4 py-1 font-medium">차장</th>
-              </tr>
-              <tr>
-                <td className="border border-gray-400 px-4 py-4" />
-                <td className="border border-gray-400 px-4 py-4" />
-              </tr>
-            </thead>
-          </table>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full min-w-max border-collapse text-xs">
             <thead>
-              <tr className="bg-gray-50">
-                <th rowSpan={2} className="border border-gray-300 px-2 py-1">
+              <tr className="bg-gray-50 text-center">
+                <th rowSpan={3} className="w-12 border border-gray-400 px-1 py-1">
                   번호
                 </th>
-                <th rowSpan={2} className="border border-gray-300 px-2 py-1">
+                <th rowSpan={3} className="border border-gray-400 px-2 py-1">
                   품명/규격
                 </th>
-                <th rowSpan={2} className="border border-gray-300 px-2 py-1">
+                <th rowSpan={3} className="w-12 border border-gray-400 px-1 py-1">
                   단위
                 </th>
-                <th rowSpan={2} className="border border-gray-300 px-2 py-1">
+                <th rowSpan={3} className="w-12 border border-gray-400 px-1 py-1">
                   수량
                 </th>
-                <th rowSpan={2} className="border border-gray-300 px-2 py-1">
+                <th rowSpan={3} className="w-20 border border-gray-400 px-1 py-1">
                   단가
                 </th>
-                <th rowSpan={2} className="border border-gray-300 px-2 py-1">
+                <th rowSpan={3} className="w-24 border border-gray-400 px-1 py-1">
                   금액
                 </th>
-                <th colSpan={colSpanCount} className="border border-gray-300 px-2 py-1">
+                <th colSpan={colSpanCount} className="border border-gray-400 px-2 py-1">
                   납품현황
                 </th>
               </tr>
-              <tr className="bg-gray-50">
-                {report.weeks.map((week) =>
-                  week.dates.map((date, i) => (
-                    <th key={date} className="border border-gray-300 px-1 py-1 font-normal">
-                      {i === 0 ? (
-                        <div className="flex flex-col">
-                          <span className="font-medium">{week.label}</span>
-                          <span>{date.slice(5)}</span>
-                        </div>
-                      ) : (
-                        date.slice(5)
-                      )}
-                    </th>
-                  ))
+              <tr className="bg-gray-50 text-center">
+                {displayWeeks.map((week) => (
+                  <th key={week.label} colSpan={week.dates.length} className="border border-gray-400 px-1 py-1 font-medium">
+                    {week.label}
+                  </th>
+                ))}
+                {dateColumns.length === 0 && <th className="border border-gray-400 px-2 py-1">-</th>}
+              </tr>
+              <tr className="bg-gray-50 text-center">
+                {displayWeeks.map((week) =>
+                  week.dates.map((date) => {
+                    if (date.startsWith("empty-")) {
+                      return <th key={date} className="min-w-[32px] border border-gray-400 px-1 py-1 text-[10px] font-normal tracking-tighter" />;
+                    }
+                    const [, m, d] = date.split("-");
+                    return (
+                      <th key={date} className="min-w-[32px] border border-gray-400 px-1 py-1 text-[10px] font-normal tracking-tighter">
+                        {parseInt(m, 10)}/{parseInt(d, 10)}
+                      </th>
+                    );
+                  })
                 )}
-                {dateColumns.length === 0 && <th className="border border-gray-300 px-2 py-1">-</th>}
+                {dateColumns.length === 0 && <th className="border border-gray-400 px-2 py-1">-</th>}
               </tr>
             </thead>
             <tbody>
               {report.items.map((item, index) => (
                 <tr key={`${item.itemName}-${item.unit}`}>
-                  <td className="border border-gray-300 px-2 py-1 text-center">{index + 1}</td>
-                  <td className="border border-gray-300 px-2 py-1">{item.itemName}</td>
-                  <td className="border border-gray-300 px-2 py-1 text-center">{item.unit}</td>
-                  <td className="border border-gray-300 px-2 py-1 text-right">
+                  <td className="border border-gray-400 px-1 py-1 text-center">{index + 1}</td>
+                  <td className="border border-gray-400 px-2 py-1">{item.itemName}</td>
+                  <td className="border border-gray-400 px-1 py-1 text-center">{item.unit}</td>
+                  <td className="border border-gray-400 px-2 py-1 text-right">
                     {item.totalQuantity.toLocaleString()}
                   </td>
                   <td
-                    className={`border border-gray-300 px-2 py-1 text-right ${
+                    className={`border border-gray-400 px-2 py-1 text-right ${
                       item.priceVaries ? "font-semibold text-red-600" : ""
                     }`}
                     title={item.priceVaries ? "이 기간 중 단가가 달라졌습니다" : undefined}
@@ -123,12 +155,14 @@ export default function VendorReportTable({
                     {item.unitPrice.toLocaleString()}
                     {item.priceVaries && " ⚠"}
                   </td>
-                  <td className="border border-gray-300 px-2 py-1 text-right">
+                  <td className="border border-gray-400 px-2 py-1 text-right">
                     {item.totalAmount.toLocaleString()}
                   </td>
                   {dateColumns.map((date) => (
-                    <td key={date} className="border border-gray-300 px-1 py-1 text-center">
-                      {item.quantityByDate[date] ? item.quantityByDate[date].toLocaleString() : ""}
+                    <td key={date} className="border border-gray-400 px-1 py-1 text-center">
+                      {!date.startsWith("empty-") && item.quantityByDate[date]
+                        ? item.quantityByDate[date].toLocaleString()
+                        : ""}
                     </td>
                   ))}
                 </tr>
@@ -137,7 +171,7 @@ export default function VendorReportTable({
                 <tr>
                   <td
                     colSpan={6 + colSpanCount}
-                    className="border border-gray-300 px-2 py-6 text-center text-gray-400"
+                    className="border border-gray-400 px-2 py-6 text-center text-gray-400"
                   >
                     해당 기간에 확정된 납품 내역이 없습니다.
                   </td>
@@ -147,14 +181,14 @@ export default function VendorReportTable({
             {report.items.length > 0 && (
               <tfoot>
                 <tr>
-                  <td colSpan={5} className="border-t-2 border-gray-800 px-2 py-1 text-right font-semibold">
+                  <td colSpan={5} className="border border-gray-400 bg-gray-50 px-2 py-1 text-center font-semibold tracking-widest">
                     합계
                   </td>
-                  <td className="border-t-2 border-gray-800 px-2 py-1 text-right font-semibold">
+                  <td className="border border-gray-400 px-2 py-1 text-right font-semibold">
                     {report.grandTotal.toLocaleString()}
                   </td>
                   {dateColumns.map((date) => (
-                    <td key={date} className="border-t-2 border-gray-800" />
+                    <td key={date} className="border border-gray-400" />
                   ))}
                 </tr>
               </tfoot>
