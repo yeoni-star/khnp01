@@ -7,10 +7,10 @@ import { createDraftSlip } from "@/actions/slip-actions";
 type ActionState = { ok: boolean; message?: string } | null;
 
 export default function NewSlipForm({
-  vendors,
+  contracts,
   defaultVendor,
 }: {
-  vendors: { id: string; name: string }[];
+  contracts: { id: string; title: string | null; vendorId: string; vendor: { name: string }; startDate: Date; endDate: Date }[];
   defaultVendor: { id: string; name: string; categoryLabel: string | null } | null;
 }) {
   const [state, formAction, pending] = useActionState<ActionState, FormData>(
@@ -24,7 +24,7 @@ export default function NewSlipForm({
     <form action={formAction} className="space-y-3 rounded-md border border-gray-200 bg-white p-4">
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">업체 *</label>
+          <label className="mb-1 block text-xs font-medium text-gray-600">계약 *</label>
           {defaultVendor ? (
             <div>
               <input type="hidden" name="vendorId" value={defaultVendor.id} />
@@ -33,7 +33,7 @@ export default function NewSlipForm({
                 {defaultVendor.categoryLabel ? `(${defaultVendor.categoryLabel})` : ""}
               </p>
               <Link href="/slips/new" className="mt-1 inline-block text-xs text-blue-600 hover:underline">
-                다른 업체 선택
+                다른 계약 선택
               </Link>
             </div>
           ) : (
@@ -44,11 +44,11 @@ export default function NewSlipForm({
               className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm"
             >
               <option value="" disabled>
-                업체 선택
+                계약 선택
               </option>
-              {vendors.map((v) => (
-                <option key={v.id} value={v.id}>
-                  {v.name}
+              {contracts.map((c) => (
+                <option key={c.id} value={c.vendorId}>
+                  [{c.vendor.name}] {c.title || `${c.startDate.toISOString().slice(0,10)} 계약`}
                 </option>
               ))}
             </select>

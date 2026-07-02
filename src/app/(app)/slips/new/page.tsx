@@ -9,8 +9,11 @@ export default async function NewSlipPage({
 }) {
   const { vendorId } = await searchParams;
 
-  const [vendors, defaultVendor] = await Promise.all([
-    db.vendor.findMany({ orderBy: { name: "asc" } }),
+  const [contracts, defaultVendor] = await Promise.all([
+    db.contract.findMany({ 
+      include: { vendor: true },
+      orderBy: { startDate: "desc" } 
+    }),
     vendorId
       ? db.vendor.findUnique({
           where: { id: vendorId },
@@ -30,12 +33,12 @@ export default async function NewSlipPage({
         </div>
         <div className="rounded-md border border-gray-200 bg-white p-4 text-sm text-gray-700">
           <p className="font-medium text-gray-900">직접 입력</p>
-          <p className="mt-1 text-xs text-gray-500">업체와 납품일자를 선택하고 품목을 직접 입력합니다.</p>
+          <p className="mt-1 text-xs text-gray-500">계약과 납품일자를 선택하고 품목을 직접 입력합니다.</p>
         </div>
       </div>
 
       <NewSlipForm
-        vendors={vendors}
+        contracts={contracts}
         defaultVendor={
           defaultVendor
             ? {
