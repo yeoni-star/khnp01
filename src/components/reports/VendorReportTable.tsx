@@ -34,13 +34,33 @@ export default function VendorReportTable({
     paddedWeeks.push({ label: `${paddedWeeks.length + 1}주`, dates: [] });
   }
 
+  const [emptySlots, setEmptySlots] = useState<Record<string, number>>({});
+
   const displayWeeks = paddedWeeks.map((week) => {
+    const actualCount = week.dates.length;
+    const defaultEmpty = Math.max(0, 3 - actualCount);
+    const emptyCount = emptySlots[week.label] !== undefined ? emptySlots[week.label] : defaultEmpty;
+    
     const dates = [...week.dates];
-    while (dates.length < 5) {
-      dates.push(`empty-${week.label}-${dates.length}`);
+    for (let i = 0; i < emptyCount; i++) {
+      dates.push(`empty-${week.label}-${i}`);
     }
-    return { ...week, dates };
+    return { ...week, dates, actualCount };
   });
+
+  const handleAddCol = (label: string, actualCount: number) => {
+    setEmptySlots(prev => {
+      const current = prev[label] ?? Math.max(0, 3 - actualCount);
+      return { ...prev, [label]: current + 1 };
+    });
+  };
+
+  const handleRemoveCol = (label: string, actualCount: number) => {
+    setEmptySlots(prev => {
+      const current = prev[label] ?? Math.max(0, 3 - actualCount);
+      return { ...prev, [label]: Math.max(0, current - 1) };
+    });
+  };
 
   const dateColumns = displayWeeks.flatMap((w) => w.dates);
   const colSpanCount = dateColumns.length || 1;
@@ -155,8 +175,22 @@ export default function VendorReportTable({
               </tr>
               <tr className="bg-gray-50 text-center">
                 {displayWeeks.map((week) => (
-                  <th key={week.label} colSpan={week.dates.length} className="border border-gray-400 px-1 py-1 font-medium">
+                  <th key={week.label} colSpan={week.dates.length} className="group relative border border-gray-400 px-1 py-1 font-medium">
                     {week.label}
+                    <div className="absolute right-0 top-0 hidden h-full items-center gap-1 bg-gray-50 px-1 group-hover:flex print:hidden">
+                      <button
+                        onClick={() => handleRemoveCol(week.label, week.actualCount)}
+                        className="flex h-4 w-4 items-center justify-center rounded bg-gray-200 text-xs text-gray-600 hover:bg-gray-300"
+                      >
+                        -
+                      </button>
+                      <button
+                        onClick={() => handleAddCol(week.label, week.actualCount)}
+                        className="flex h-4 w-4 items-center justify-center rounded bg-gray-200 text-xs text-gray-600 hover:bg-gray-300"
+                      >
+                        +
+                      </button>
+                    </div>
                   </th>
                 ))}
                 {dateColumns.length === 0 && <th className="border border-gray-400 px-2 py-1">-</th>}
