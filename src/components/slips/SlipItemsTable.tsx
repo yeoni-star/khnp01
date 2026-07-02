@@ -402,6 +402,7 @@ export default function SlipItemsTable({
                           </button>
                         </div>
                       </div>
+                    )}
                   </td>
                   <td className="px-2 py-2">
                     <input
