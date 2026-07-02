@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { createDraftSlip } from "@/actions/slip-actions";
 
 type ActionState = { ok: boolean; message?: string } | null;
@@ -19,6 +19,13 @@ export default function NewSlipForm({
   );
 
   const today = new Date().toISOString().slice(0, 10);
+  const [dateStr, setDateStr] = useState(today);
+
+  const filteredContracts = contracts.filter((c) => {
+    const sDate = c.startDate.toISOString().slice(0, 10);
+    const eDate = c.endDate.toISOString().slice(0, 10);
+    return sDate <= dateStr && eDate >= dateStr;
+  });
 
   return (
     <form action={formAction} className="space-y-3 rounded-md border border-gray-200 bg-white p-4">
@@ -44,11 +51,11 @@ export default function NewSlipForm({
               className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm"
             >
               <option value="" disabled>
-                계약 선택
+                계약 선택 ({filteredContracts.length}건)
               </option>
-              {contracts.map((c) => (
+              {filteredContracts.map((c) => (
                 <option key={c.id} value={c.vendorId}>
-                  [{c.vendor.name}] {c.title || `${c.startDate.toISOString().slice(0,10)} 계약`}
+                  [{c.vendor.name}] {c.title || `${c.startDate.toISOString().slice(0, 10)} 계약`}
                 </option>
               ))}
             </select>
@@ -60,7 +67,8 @@ export default function NewSlipForm({
             type="date"
             name="deliveryDate"
             required
-            defaultValue={today}
+            value={dateStr}
+            onChange={(e) => setDateStr(e.target.value)}
             className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm"
           />
         </div>
