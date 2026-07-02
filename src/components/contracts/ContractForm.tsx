@@ -139,7 +139,7 @@ export default function ContractForm({
     <form ref={formRef} action={formAction} className="space-y-6">
       <input type="hidden" name="itemsJson" value={itemsJson} />
 
-      <p className="text-xs text-gray-500">계약과 단가표는 식당 A/B 공통으로 적용됩니다.</p>
+      <p className="text-xs text-gray-500">계약과 단가표는 본관/후문 공통으로 적용됩니다.</p>
 
       <div className="grid grid-cols-2 gap-4 rounded-md border border-gray-200 bg-white p-4">
         <div>

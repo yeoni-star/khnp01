@@ -15,7 +15,7 @@ export default async function ContractsPage() {
         <div>
           <h1 className="text-lg font-semibold text-gray-900">계약/단가표 관리</h1>
           <p className="mt-1 text-sm text-gray-600">
-            업체별 계약기간과 품목 단가표를 관리합니다. (계약/단가는 식당 A/B 공통)
+            업체별 계약기간과 품목 단가표를 관리합니다. (계약/단가는 본관/후문 공통)
           </p>
         </div>
         <Link
