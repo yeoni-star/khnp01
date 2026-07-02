@@ -63,6 +63,9 @@ export default function ContractForm({
 
   const [ocrPending, setOcrPending] = useState(false);
   const [ocrMessage, setOcrMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [zoom, setZoom] = useState(1);
+  const [isPinned, setIsPinned] = useState(false);
 
   const boundAction = isEdit
     ? (formData: FormData) => updateContract(contract!.id, formData)
@@ -79,6 +82,13 @@ export default function ContractForm({
     }
   }, [state, router]);
 
+  // Clean up Object URL
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
+
   function updateItem(index: number, patch: Partial<ContractItemRow>) {
     setItems((prev) => prev.map((row, i) => (i === index ? { ...row, ...patch } : row)));
   }
@@ -92,6 +102,10 @@ export default function ContractForm({
   }
 
   async function handleFileUpload(file: File) {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl(URL.createObjectURL(file));
+    setZoom(1);
+
     setOcrPending(true);
     setOcrMessage(null);
     try {
@@ -136,8 +150,32 @@ export default function ContractForm({
   );
 
   return (
-    <form ref={formRef} action={formAction} className="space-y-6">
-      <input type="hidden" name="itemsJson" value={itemsJson} />
+    <div className={`flex gap-6 items-start ${previewUrl ? 'flex-col lg:flex-row' : 'flex-col'}`}>
+      {previewUrl && (
+        <div className={`rounded-md border border-gray-200 bg-white p-3 ${isPinned ? 'w-full lg:w-1/2 lg:sticky lg:top-4 h-[50vh] lg:h-[calc(100vh-2rem)] flex flex-col' : 'w-full lg:w-1/2'}`}>
+          <div className="flex items-center gap-2 mb-3">
+            <h3 className="text-sm font-semibold text-gray-700">단가표 원본</h3>
+            <div className="ml-auto flex gap-1">
+              <button type="button" onClick={() => setZoom((z) => z + 0.2)} className="rounded border bg-gray-50 px-2 py-1 text-xs text-gray-700 hover:bg-gray-100">
+                확대
+              </button>
+              <button type="button" onClick={() => setZoom((z) => Math.max(0.2, z - 0.2))} className="rounded border bg-gray-50 px-2 py-1 text-xs text-gray-700 hover:bg-gray-100">
+                축소
+              </button>
+              <button type="button" onClick={() => setIsPinned(!isPinned)} className={`rounded border px-2 py-1 text-xs ${isPinned ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-gray-50 text-gray-700 hover:bg-gray-100'}`}>
+                {isPinned ? '고정 해제' : '화면 고정'}
+              </button>
+            </div>
+          </div>
+          <div className="flex-1 overflow-auto rounded border bg-gray-100">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={previewUrl} style={{ transform: `scale(${zoom})`, transformOrigin: 'top left' }} className="max-w-none transition-transform" alt="단가표 미리보기" />
+          </div>
+        </div>
+      )}
+
+      <form ref={formRef} action={formAction} className={`space-y-6 ${previewUrl ? 'w-full lg:w-1/2' : 'w-full'}`}>
+        <input type="hidden" name="itemsJson" value={itemsJson} />
 
       <p className="text-xs text-gray-500">계약과 단가표는 본관/후문 공통으로 적용됩니다.</p>
 
@@ -305,5 +343,6 @@ export default function ContractForm({
         {pending ? "저장 중..." : isEdit ? "계약 수정" : "계약 등록"}
       </button>
     </form>
+    </div>
   );
 }
