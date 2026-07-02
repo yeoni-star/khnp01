@@ -2,8 +2,8 @@ export const CATEGORIES = [
   "GRAIN",
   "KIMCHI",
   "PRODUCE",
-  "PROCESSED",
   "MEAT",
+  "PROCESSED",
 ] as const;
 
 export type CategoryCode = (typeof CATEGORIES)[number];

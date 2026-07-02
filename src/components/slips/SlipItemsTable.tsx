@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { saveSlipDraft, confirmSlip } from "@/actions/slip-actions";
 import { CATEGORIES, CATEGORY_LABELS, type CategoryCode } from "@/lib/categories";
@@ -104,7 +104,6 @@ export default function SlipItemsTable({
   status,
   contractItems,
   initialItems,
-  ocrEnabled,
 }: {
   slipId: string;
   status: "DRAFT" | "CONFIRMED";
@@ -119,7 +118,6 @@ export default function SlipItemsTable({
     matchType: MatchType;
     priceOverridden: boolean;
   }[];
-  ocrEnabled: boolean;
 }) {
   const router = useRouter();
   const [rows, setRows] = useState<Row[]>(
@@ -143,18 +141,37 @@ export default function SlipItemsTable({
   const [ocrPending, setOcrPending] = useState(false);
   const [ocrNote, setOcrNote] = useState<string | null>(null);
   const readOnly = status === "CONFIRMED";
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const pendingApiKeyRef = useRef<string>("");
 
   function updateRow(key: string, patch: Partial<Row>) {
     setRows((prev) => prev.map((r) => (r.key === key ? { ...r, ...patch } : r)));
   }
 
+  function handleUploadClick() {
+    const apiKey = window.prompt("Anthropic API 키를 입력해 주세요. (업로드할 때마다 새로 입력해야 합니다)");
+    if (!apiKey || !apiKey.trim()) {
+      setMessage({ type: "error", text: "API 키를 입력해야 업로드할 수 있습니다." });
+      return;
+    }
+    pendingApiKeyRef.current = apiKey.trim();
+    fileInputRef.current?.click();
+  }
+
   async function handleFileUpload(file: File) {
+    const apiKey = pendingApiKeyRef.current;
+    pendingApiKeyRef.current = "";
+    if (!apiKey) {
+      setMessage({ type: "error", text: "API 키를 입력해야 업로드할 수 있습니다." });
+      return;
+    }
     setOcrPending(true);
     setOcrNote(null);
     setMessage(null);
     try {
       const formData = new FormData();
       formData.append("file", file);
+      formData.append("apiKey", apiKey);
       const res = await fetch(`/api/slips/${slipId}/ocr`, { method: "POST", body: formData });
       const data = await res.json();
       if (!res.ok || !data.ok) {
@@ -291,21 +308,29 @@ export default function SlipItemsTable({
 
   return (
     <div className="space-y-4">
-      {!readOnly && ocrEnabled && (
+      {!readOnly && (
         <div className="rounded-md border border-gray-200 bg-white p-4">
           <label className="mb-1 block text-xs font-medium text-gray-600">영수증 업로드 (PDF/JPG/PNG)</label>
           <input
+            ref={fileInputRef}
             type="file"
             accept="application/pdf,image/jpeg,image/png"
             disabled={ocrPending}
+            className="hidden"
             onChange={(e) => {
               const file = e.target.files?.[0];
               if (file) void handleFileUpload(file);
               e.target.value = "";
             }}
-            className="block text-sm"
           />
-          {ocrPending && <p className="mt-1 text-xs text-gray-500">인식 중입니다...</p>}
+          <button
+            type="button"
+            onClick={handleUploadClick}
+            disabled={ocrPending}
+            className="rounded border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+          >
+            {ocrPending ? "인식 중..." : "파일 선택 (API 키 입력 필요)"}
+          </button>
           {ocrNote && <p className="mt-1 text-xs text-gray-500">{ocrNote}</p>}
         </div>
       )}

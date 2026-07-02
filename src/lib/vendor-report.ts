@@ -2,6 +2,12 @@ import { db } from "./db";
 import type { RestaurantCode } from "./restaurants";
 import type { CategoryCode } from "./categories";
 
+/** 납품보고서 상단 "일자" 표기: 해당 월의 말일 기준 YY.M.D (예: 26.5.31) */
+export function formatReportIssueDate(year: number, month: number): string {
+  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  return `${String(year).slice(-2)}.${month}.${lastDay}`;
+}
+
 export type VendorReportWeek = { label: string; dates: string[] };
 
 export type VendorReportItemRow = {

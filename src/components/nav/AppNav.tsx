@@ -4,7 +4,6 @@ import type { RestaurantCode } from "@/lib/restaurants";
 
 const NAV_ITEMS = [
   { href: "/", label: "홈" },
-  { href: "/vendors", label: "업체" },
   { href: "/contracts", label: "계약/단가" },
   { href: "/slips", label: "거래명세표" },
   { href: "/unmatched-items", label: "미등록 품목" },

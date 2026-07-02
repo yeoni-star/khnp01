@@ -1,15 +1,17 @@
 import PrintButton from "./PrintButton";
-import type { VendorReport } from "@/lib/vendor-report";
+import { formatReportIssueDate, type VendorReport } from "@/lib/vendor-report";
 
 export default function VendorReportTable({
   vendorId,
   vendorName,
+  categoryLabel,
   year,
   month,
   report,
 }: {
   vendorId: string;
   vendorName: string;
+  categoryLabel: string | null;
   year: number;
   month: number;
   report: VendorReport;
@@ -36,10 +38,11 @@ export default function VendorReportTable({
         <div className="mb-4 flex items-start justify-between">
           <div>
             <h2 className="text-xl font-semibold text-gray-900">납품보고서</h2>
-            <p className="mt-1 text-sm text-gray-600">업체명: {vendorName}</p>
-            <p className="text-sm text-gray-600">
-              기간: {year}년 {month}월
+            <p className="mt-1 text-sm text-gray-600">
+              업체명 : {vendorName}
+              {categoryLabel ? `(${categoryLabel})` : ""}
             </p>
+            <p className="text-sm text-gray-600">일자 : {formatReportIssueDate(year, month)}</p>
           </div>
           <table className="border-collapse text-center text-xs">
             <thead>

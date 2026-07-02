@@ -1,4 +1,3 @@
-import { Fragment } from "react";
 import PrintButton from "./PrintButton";
 import { CATEGORY_LABELS } from "@/lib/categories";
 import type { SummaryReport } from "@/lib/report-aggregate";
@@ -61,58 +60,23 @@ export default function SummaryReportTable({
           <thead>
             <tr className="bg-gray-50">
               <th className="border border-gray-300 px-2 py-1">카테고리</th>
-              <th className="border border-gray-300 px-2 py-1">품명</th>
-              <th className="border border-gray-300 px-2 py-1">단위</th>
-              <th className="border border-gray-300 px-2 py-1">수량</th>
-              <th className="border border-gray-300 px-2 py-1">단가</th>
               <th className="border border-gray-300 px-2 py-1">금액</th>
             </tr>
           </thead>
           <tbody>
             {report.sections.map((section) => (
-              <Fragment key={section.category}>
-                {section.items.map((item, i) => (
-                  <tr key={`${section.category}-${item.itemName}-${item.unit}`}>
-                    {i === 0 && (
-                      <td
-                        rowSpan={section.items.length}
-                        className="border border-gray-300 bg-gray-50 px-2 py-1 text-center font-medium"
-                      >
-                        {CATEGORY_LABELS[section.category]}
-                      </td>
-                    )}
-                    <td className="border border-gray-300 px-2 py-1">{item.itemName}</td>
-                    <td className="border border-gray-300 px-2 py-1 text-center">{item.unit}</td>
-                    <td className="border border-gray-300 px-2 py-1 text-right">
-                      {item.totalQuantity.toLocaleString()}
-                    </td>
-                    <td
-                      className={`border border-gray-300 px-2 py-1 text-right ${
-                        item.priceVaries ? "font-semibold text-red-600" : ""
-                      }`}
-                      title={item.priceVaries ? "이 기간 중 단가가 달라졌습니다" : undefined}
-                    >
-                      {item.unitPrice.toLocaleString()}
-                      {item.priceVaries && " ⚠"}
-                    </td>
-                    <td className="border border-gray-300 px-2 py-1 text-right">
-                      {item.totalAmount.toLocaleString()}
-                    </td>
-                  </tr>
-                ))}
-                <tr className="bg-gray-50">
-                  <td colSpan={5} className="border border-gray-300 px-2 py-1 text-right font-semibold">
-                    {CATEGORY_LABELS[section.category]} 소계
-                  </td>
-                  <td className="border border-gray-300 px-2 py-1 text-right font-semibold">
-                    {section.subtotal.toLocaleString()}
-                  </td>
-                </tr>
-              </Fragment>
+              <tr key={section.category}>
+                <td className="border border-gray-300 px-2 py-1 font-medium">
+                  {CATEGORY_LABELS[section.category]}
+                </td>
+                <td className="border border-gray-300 px-2 py-1 text-right">
+                  {section.subtotal.toLocaleString()}
+                </td>
+              </tr>
             ))}
             {report.sections.length === 0 && (
               <tr>
-                <td colSpan={6} className="border border-gray-300 px-2 py-6 text-center text-gray-400">
+                <td colSpan={2} className="border border-gray-300 px-2 py-6 text-center text-gray-400">
                   해당 월에 확정된 납품 내역이 없습니다.
                 </td>
               </tr>
@@ -121,9 +85,7 @@ export default function SummaryReportTable({
           {report.sections.length > 0 && (
             <tfoot>
               <tr>
-                <td colSpan={5} className="border-t-2 border-gray-800 px-2 py-1 text-right font-bold">
-                  총 합계
-                </td>
+                <td className="border-t-2 border-gray-800 px-2 py-1 text-right font-bold">총 합계</td>
                 <td className="border-t-2 border-gray-800 px-2 py-1 text-right font-bold">
                   {report.grandTotal.toLocaleString()}
                 </td>

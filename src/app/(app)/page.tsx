@@ -21,7 +21,7 @@ export default async function DashboardPage() {
   const cards = [
     { label: "임시저장 거래명세표", value: draftCount, href: "/slips" },
     { label: "이번 달 확정 건수", value: confirmedThisMonth, href: "/slips" },
-    { label: "등록 업체 수", value: vendorCount, href: "/vendors" },
+    { label: "등록 업체 수", value: vendorCount, href: "/contracts" },
   ];
 
   const quickLinks = [
@@ -36,7 +36,7 @@ export default async function DashboardPage() {
       <div>
         <h1 className="text-lg font-semibold text-gray-900">대시보드</h1>
         <p className="mt-1 text-sm text-gray-600">
-          업체/계약 관리, 거래명세표 입력, 월별 납품보고서 메뉴를 이용해 주세요.
+          계약 관리, 거래명세표 입력, 월별 납품보고서 메뉴를 이용해 주세요.
         </p>
       </div>
 

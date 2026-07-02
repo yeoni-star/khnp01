@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { getSession } from "@/lib/session";
+import { CATEGORIES, CATEGORY_LABELS } from "@/lib/categories";
 
 function currentYearMonth() {
   const now = new Date();
@@ -31,8 +32,24 @@ export default async function ReportsPage({
         },
       },
     },
+    include: {
+      contracts: { orderBy: { startDate: "desc" }, take: 1, select: { category: true } },
+    },
     orderBy: { name: "asc" },
   });
+
+  const vendorsByCategory = new Map<string, typeof vendorsWithSlips>();
+  const uncategorized: typeof vendorsWithSlips = [];
+  for (const vendor of vendorsWithSlips) {
+    const category = vendor.contracts[0]?.category;
+    if (!category) {
+      uncategorized.push(vendor);
+      continue;
+    }
+    const arr = vendorsByCategory.get(category) ?? [];
+    arr.push(vendor);
+    vendorsByCategory.set(category, arr);
+  }
 
   const yearOptions = Array.from({ length: 5 }, (_, i) => defaultYear - 2 + i);
   const monthOptions = Array.from({ length: 12 }, (_, i) => i + 1);
@@ -85,35 +102,64 @@ export default async function ReportsPage({
         </Link>
       </div>
 
-      <div className="overflow-hidden rounded-md border border-gray-200 bg-white">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50 text-left text-xs font-medium text-gray-500">
-            <tr>
-              <th className="px-4 py-2">업체명</th>
-              <th className="px-4 py-2" />
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {vendorsWithSlips.map((v) => (
-              <tr key={v.id}>
-                <td className="px-4 py-2 font-medium text-gray-900">{v.name}</td>
-                <td className="px-4 py-2 text-right">
-                  <Link href={`/reports/vendor/${v.id}/${year}/${month}`} className="text-blue-600 hover:underline">
-                    보고서 보기
-                  </Link>
-                </td>
-              </tr>
-            ))}
-            {vendorsWithSlips.length === 0 && (
-              <tr>
-                <td colSpan={2} className="px-4 py-6 text-center text-gray-400">
-                  해당 월에 확정된 거래명세표가 없습니다.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      {vendorsWithSlips.length === 0 ? (
+        <div className="rounded-md border border-gray-200 bg-white px-4 py-6 text-center text-sm text-gray-400">
+          해당 월에 확정된 거래명세표가 없습니다.
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {CATEGORIES.map((category) => {
+            const vendors = vendorsByCategory.get(category);
+            if (!vendors || vendors.length === 0) return null;
+            return (
+              <div key={category} className="overflow-hidden rounded-md border border-gray-200 bg-white">
+                <div className="bg-gray-50 px-4 py-2 text-sm font-semibold text-gray-900">
+                  {CATEGORY_LABELS[category]}
+                </div>
+                <table className="w-full text-sm">
+                  <tbody className="divide-y divide-gray-100">
+                    {vendors.map((v) => (
+                      <tr key={v.id}>
+                        <td className="px-4 py-2 font-medium text-gray-900">{v.name}</td>
+                        <td className="px-4 py-2 text-right">
+                          <Link
+                            href={`/reports/vendor/${v.id}/${year}/${month}`}
+                            className="text-blue-600 hover:underline"
+                          >
+                            보고서 보기
+                          </Link>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            );
+          })}
+          {uncategorized.length > 0 && (
+            <div className="overflow-hidden rounded-md border border-gray-200 bg-white">
+              <div className="bg-gray-50 px-4 py-2 text-sm font-semibold text-gray-900">미분류</div>
+              <table className="w-full text-sm">
+                <tbody className="divide-y divide-gray-100">
+                  {uncategorized.map((v) => (
+                    <tr key={v.id}>
+                      <td className="px-4 py-2 font-medium text-gray-900">{v.name}</td>
+                      <td className="px-4 py-2 text-right">
+                        <Link
+                          href={`/reports/vendor/${v.id}/${year}/${month}`}
+                          className="text-blue-600 hover:underline"
+                        >
+                          보고서 보기
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

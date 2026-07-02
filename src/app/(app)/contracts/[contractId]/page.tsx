@@ -10,7 +10,7 @@ export default async function ContractDetailPage({
 }) {
   const { contractId } = await params;
   const [contract, vendors] = await Promise.all([
-    db.contract.findUnique({ where: { id: contractId }, include: { items: true } }),
+    db.contract.findUnique({ where: { id: contractId }, include: { items: true, vendor: true } }),
     db.vendor.findMany({ orderBy: { name: "asc" } }),
   ]);
   if (!contract) notFound();
@@ -21,7 +21,19 @@ export default async function ContractDetailPage({
         <h1 className="text-lg font-semibold text-gray-900">계약 상세</h1>
         <DeleteContractButton contractId={contract.id} />
       </div>
-      <ContractForm vendors={vendors} contract={contract} />
+      <ContractForm
+        vendorNames={vendors.map((v) => v.name)}
+        contract={{
+          id: contract.id,
+          vendorName: contract.vendor.name,
+          category: contract.category,
+          startDate: contract.startDate,
+          endDate: contract.endDate,
+          title: contract.title,
+          memo: contract.memo,
+          items: contract.items.map((i) => ({ itemName: i.itemName, unit: i.unit, unitPrice: i.unitPrice })),
+        }}
+      />
     </div>
   );
 }

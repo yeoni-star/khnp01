@@ -11,13 +11,13 @@ type ActionResult = { ok: true } | { ok: false; message: string };
 
 const itemSchema = z.object({
   itemName: z.string().trim().min(1),
-  category: z.enum(CATEGORIES, { message: "품목마다 카테고리를 선택해 주세요." }),
   unit: z.string().trim().min(1, "품목마다 단위를 입력해 주세요."),
   unitPrice: z.coerce.number().int("단가는 정수로 입력해 주세요.").nonnegative("단가는 0 이상이어야 합니다."),
 });
 
 const contractFormSchema = z.object({
-  vendorId: z.string().min(1, "업체를 선택해 주세요."),
+  vendorName: z.string().trim().min(1, "업체명을 입력해 주세요."),
+  category: z.enum(CATEGORIES, { message: "카테고리를 선택해 주세요." }),
   startDate: z.string().min(1, "계약 시작일을 입력해 주세요."),
   endDate: z.string().min(1, "계약 종료일을 입력해 주세요."),
   title: z.string().trim().optional(),
@@ -41,7 +41,8 @@ function parseItemsJson(itemsJson: string) {
 
 function parseContractForm(formData: FormData) {
   const parsed = contractFormSchema.safeParse({
-    vendorId: formData.get("vendorId"),
+    vendorName: formData.get("vendorName"),
+    category: formData.get("category"),
     startDate: formData.get("startDate"),
     endDate: formData.get("endDate"),
     title: formData.get("title") ?? undefined,
@@ -68,13 +69,23 @@ function parseContractForm(formData: FormData) {
 
   return {
     ok: true as const,
-    vendorId: parsed.data.vendorId,
+    vendorName: parsed.data.vendorName,
+    category: parsed.data.category,
     startDate,
     endDate,
     title: parsed.data.title || null,
     memo: parsed.data.memo || null,
-    items: itemsResult.items,
+    items: itemsResult.items.map((item) => ({ ...item, category: parsed.data.category })),
   };
+}
+
+async function resolveVendorId(vendorName: string): Promise<string> {
+  const vendor = await db.vendor.upsert({
+    where: { name: vendorName },
+    update: {},
+    create: { name: vendorName },
+  });
+  return vendor.id;
 }
 
 export async function createContract(formData: FormData): Promise<ActionResult> {
@@ -82,14 +93,17 @@ export async function createContract(formData: FormData): Promise<ActionResult> 
   const parsed = parseContractForm(formData);
   if (!parsed.ok) return parsed;
 
-  const overlap = await hasOverlappingContract(parsed.vendorId, parsed.startDate, parsed.endDate);
+  const vendorId = await resolveVendorId(parsed.vendorName);
+
+  const overlap = await hasOverlappingContract(vendorId, parsed.startDate, parsed.endDate);
   if (overlap) {
     return { ok: false, message: "같은 업체에 기간이 겹치는 계약이 이미 있습니다." };
   }
 
   await db.contract.create({
     data: {
-      vendorId: parsed.vendorId,
+      vendorId,
+      category: parsed.category,
       startDate: parsed.startDate,
       endDate: parsed.endDate,
       title: parsed.title,
@@ -107,12 +121,9 @@ export async function updateContract(contractId: string, formData: FormData): Pr
   const parsed = parseContractForm(formData);
   if (!parsed.ok) return parsed;
 
-  const overlap = await hasOverlappingContract(
-    parsed.vendorId,
-    parsed.startDate,
-    parsed.endDate,
-    contractId
-  );
+  const vendorId = await resolveVendorId(parsed.vendorName);
+
+  const overlap = await hasOverlappingContract(vendorId, parsed.startDate, parsed.endDate, contractId);
   if (overlap) {
     return { ok: false, message: "같은 업체에 기간이 겹치는 계약이 이미 있습니다." };
   }
@@ -122,7 +133,8 @@ export async function updateContract(contractId: string, formData: FormData): Pr
     db.contract.update({
       where: { id: contractId },
       data: {
-        vendorId: parsed.vendorId,
+        vendorId,
+        category: parsed.category,
         startDate: parsed.startDate,
         endDate: parsed.endDate,
         title: parsed.title,

@@ -4,7 +4,6 @@ const schema = z.object({
   DATABASE_URL: z.string().min(1),
   APP_PASSWORD: z.string().min(1),
   APP_SECRET: z.string().min(1),
-  ANTHROPIC_API_KEY: z.string().optional(),
 });
 
 function loadEnv() {
@@ -12,7 +11,6 @@ function loadEnv() {
     DATABASE_URL: process.env.DATABASE_URL,
     APP_PASSWORD: process.env.APP_PASSWORD,
     APP_SECRET: process.env.APP_SECRET,
-    ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
   };
 
   if (process.env.NODE_ENV !== "production") {
@@ -35,5 +33,3 @@ function loadEnv() {
 }
 
 export const env = loadEnv();
-
-export const isOcrConfigured = () => Boolean(env.ANTHROPIC_API_KEY);

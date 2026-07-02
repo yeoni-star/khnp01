@@ -6,8 +6,9 @@ import { ocrResultSchema, type OcrResult } from "./schema";
 export async function extractSlipFromFile(params: {
   base64: string;
   mediaType: "image/jpeg" | "image/png" | "application/pdf";
+  apiKey: string;
 }): Promise<OcrResult> {
-  const client = getClaudeClient();
+  const client = getClaudeClient(params.apiKey);
 
   const fileBlock =
     params.mediaType === "application/pdf"

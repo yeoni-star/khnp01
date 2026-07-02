@@ -4,7 +4,7 @@ import { requireSession } from "@/lib/session";
 import { db } from "@/lib/db";
 import { buildVendorReport } from "@/lib/vendor-report";
 import { buildVendorReportWorkbook } from "@/lib/excel/build-vendor-report-workbook";
-import { RESTAURANT_LABELS } from "@/lib/restaurants";
+import { CATEGORY_LABELS } from "@/lib/categories";
 
 export async function GET(request: NextRequest) {
   const session = await requireSession();
@@ -22,10 +22,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ message: "업체를 찾을 수 없습니다." }, { status: 404 });
   }
 
-  const report = await buildVendorReport(session.restaurant, vendorId, year, month);
+  const [report, contract] = await Promise.all([
+    buildVendorReport(session.restaurant, vendorId, year, month),
+    db.contract.findFirst({ where: { vendorId }, orderBy: { startDate: "desc" }, select: { category: true } }),
+  ]);
   const buffer = await buildVendorReportWorkbook({
     vendorName: vendor.name,
-    restaurantLabel: RESTAURANT_LABELS[session.restaurant],
+    categoryLabel: contract ? CATEGORY_LABELS[contract.category] : null,
     year,
     month,
     report,

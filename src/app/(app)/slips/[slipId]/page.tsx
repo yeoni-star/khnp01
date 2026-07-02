@@ -2,7 +2,6 @@ import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { listActiveContractItems } from "@/lib/pricing";
 import { RESTAURANT_LABELS } from "@/lib/restaurants";
-import { isOcrConfigured } from "@/lib/env";
 import SlipItemsTable from "@/components/slips/SlipItemsTable";
 import DeleteSlipButton from "@/components/slips/DeleteSlipButton";
 
@@ -54,7 +53,6 @@ export default async function SlipDetailPage({
           matchType: i.matchType,
           priceOverridden: i.priceOverridden,
         }))}
-        ocrEnabled={isOcrConfigured()}
       />
     </div>
   );

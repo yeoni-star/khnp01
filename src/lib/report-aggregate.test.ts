@@ -8,9 +8,9 @@ describe("aggregateSummaryReport", () => {
     { category: "MEAT" as const, itemName: "돼지고기", unit: "kg", quantity: 5, unitPrice: 12000, amount: 60000 },
   ];
 
-  it("카테고리 고정 순서(양곡→김치류→농수산물→공산품→육류)로 섹션을 만든다", () => {
+  it("카테고리 고정 순서(양곡→김치류→농수산물→육류→공산품)로 섹션을 만든다", () => {
     const report = aggregateSummaryReport(rows);
-    expect(report.sections.map((s) => s.category)).toEqual(["PROCESSED", "MEAT"]);
+    expect(report.sections.map((s) => s.category)).toEqual(["MEAT", "PROCESSED"]);
   });
 
   it("품목이 없는 카테고리는 섹션에서 제외한다", () => {

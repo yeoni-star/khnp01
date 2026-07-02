@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { AuthenticationError } from "@anthropic-ai/sdk";
 import { requireSession } from "@/lib/session";
 import { db } from "@/lib/db";
-import { isOcrConfigured } from "@/lib/env";
 import { saveUploadedFile } from "@/lib/storage";
 import { extractSlipFromFile } from "@/lib/ocr/extract";
 
@@ -19,17 +19,6 @@ export async function POST(
   const session = await requireSession();
   const { slipId } = await params;
 
-  if (!isOcrConfigured()) {
-    return NextResponse.json(
-      {
-        ok: false,
-        code: "OCR_NOT_CONFIGURED",
-        message: "OCR가 설정되지 않았습니다. 직접 입력을 이용해 주세요.",
-      },
-      { status: 400 }
-    );
-  }
-
   const slip = await db.deliverySlip.findUnique({ where: { id: slipId } });
   if (!slip || slip.restaurant !== session.restaurant) {
     return NextResponse.json({ ok: false, message: "거래명세표를 찾을 수 없습니다." }, { status: 404 });
@@ -39,6 +28,11 @@ export async function POST(
   const file = formData.get("file");
   if (!(file instanceof File)) {
     return NextResponse.json({ ok: false, message: "파일을 선택해 주세요." }, { status: 400 });
+  }
+
+  const apiKey = formData.get("apiKey");
+  if (typeof apiKey !== "string" || !apiKey.trim()) {
+    return NextResponse.json({ ok: false, message: "API 키를 입력해 주세요." }, { status: 400 });
   }
 
   const mediaType = ACCEPTED_TYPES[file.type];
@@ -59,7 +53,7 @@ export async function POST(
   });
 
   try {
-    const ocrResult = await extractSlipFromFile({ base64, mediaType });
+    const ocrResult = await extractSlipFromFile({ base64, mediaType, apiKey: apiKey.trim() });
 
     await db.deliverySlip.update({
       where: { id: slipId },
@@ -74,6 +68,12 @@ export async function POST(
       items: ocrResult.items,
     });
   } catch (error) {
+    if (error instanceof AuthenticationError) {
+      return NextResponse.json(
+        { ok: false, code: "OCR_AUTH_FAILED", message: "API 키가 올바르지 않습니다. 다시 확인해 주세요." },
+        { status: 200 }
+      );
+    }
     console.error("OCR extraction failed", error);
     return NextResponse.json(
       {

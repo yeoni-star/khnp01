@@ -48,6 +48,7 @@ describe("findActiveContractItem / hasOverlappingContract (integration)", () => 
     const contract = await db.contract.create({
       data: {
         vendorId,
+        category: "PROCESSED",
         startDate: new Date("2026-01-01"),
         endDate: new Date("2026-06-30"),
         items: {

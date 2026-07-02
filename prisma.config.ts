@@ -9,6 +9,8 @@ export default defineConfig({
     path: "prisma/migrations",
   },
   datasource: {
-    url: process.env["DATABASE_URL"],
+    // Supabase의 pgbouncer 커넥션 풀(DATABASE_URL)은 마이그레이션에 필요한
+    // 세션 기능을 지원하지 않으므로, CLI(migrate/db push)는 direct connection을 사용한다.
+    url: process.env["DIRECT_URL"] ?? process.env["DATABASE_URL"],
   },
 });

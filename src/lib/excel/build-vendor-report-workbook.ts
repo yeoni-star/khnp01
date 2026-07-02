@@ -1,30 +1,40 @@
 import ExcelJS from "exceljs";
-import type { VendorReport } from "../vendor-report";
+import { formatReportIssueDate, type VendorReport } from "../vendor-report";
 
 const THIN = { style: "thin" as const };
 const HEADER_FILL: ExcelJS.Fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF3F4F6" } };
 
 export async function buildVendorReportWorkbook(params: {
   vendorName: string;
-  restaurantLabel: string;
+  categoryLabel: string | null;
   year: number;
   month: number;
   report: VendorReport;
 }): Promise<ExcelJS.Buffer> {
-  const { vendorName, restaurantLabel, year, month, report } = params;
+  const { vendorName, categoryLabel, year, month, report } = params;
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet("납품보고서");
 
   const baseColCount = 6; // 번호/품명/단위/수량/단가/금액
   const dateColumns = report.weeks.flatMap((w) => w.dates);
   const totalCols = baseColCount + Math.max(dateColumns.length, 1);
+  const infoColEnd = Math.max(1, totalCols - 3);
 
-  sheet.mergeCells(1, 1, 1, Math.max(1, totalCols - 3));
+  sheet.mergeCells(1, 1, 1, infoColEnd);
   const titleCell = sheet.getCell(1, 1);
-  titleCell.value = `납품보고서 - ${restaurantLabel} - ${vendorName} - ${year}년 ${month}월`;
-  titleCell.font = { bold: true, size: 14 };
+  titleCell.value = "납품보고서";
+  titleCell.font = { bold: true, size: 16 };
+  titleCell.alignment = { horizontal: "center" };
 
-  const approvalStartCol = Math.max(1, totalCols - 3) + 1;
+  sheet.mergeCells(2, 1, 2, infoColEnd);
+  const vendorCell = sheet.getCell(2, 1);
+  vendorCell.value = `업체명 : ${vendorName}${categoryLabel ? `(${categoryLabel})` : ""}`;
+
+  sheet.mergeCells(3, 1, 3, infoColEnd);
+  const dateCell = sheet.getCell(3, 1);
+  dateCell.value = `일자 : ${formatReportIssueDate(year, month)}`;
+
+  const approvalStartCol = infoColEnd + 1;
   ["담당", "차장"].forEach((role, idx) => {
     const col = approvalStartCol + idx;
     const labelCell = sheet.getCell(1, col);
@@ -39,7 +49,7 @@ export async function buildVendorReportWorkbook(params: {
 
   const weekHeaderRow = 4;
   const dateHeaderRow = 5;
-  const baseHeaders = ["번호", "품명", "단위", "수량", "단가", "금액"];
+  const baseHeaders = ["번호", "품명/규격", "단위", "수량", "단가", "금액"];
   baseHeaders.forEach((label, i) => {
     sheet.mergeCells(weekHeaderRow, i + 1, dateHeaderRow, i + 1);
     const cell = sheet.getCell(weekHeaderRow, i + 1);

@@ -5,23 +5,21 @@ import { useRouter } from "next/navigation";
 import { createContract, updateContract } from "@/actions/contract-actions";
 import { CATEGORIES, CATEGORY_LABELS, type CategoryCode } from "@/lib/categories";
 
-type Vendor = { id: string; name: string };
-
 type ContractItemRow = {
   itemName: string;
-  category: CategoryCode | "";
   unit: string;
   unitPrice: string;
 };
 
 type ExistingContract = {
   id: string;
-  vendorId: string;
+  vendorName: string;
+  category: CategoryCode;
   startDate: Date;
   endDate: Date;
   title: string | null;
   memo: string | null;
-  items: { itemName: string; category: CategoryCode; unit: string; unitPrice: number }[];
+  items: { itemName: string; unit: string; unitPrice: number }[];
 };
 
 type ActionState = { ok: boolean; message?: string } | null;
@@ -31,23 +29,22 @@ function toDateInputValue(d: Date) {
 }
 
 function emptyRow(): ContractItemRow {
-  return { itemName: "", category: "", unit: "", unitPrice: "" };
+  return { itemName: "", unit: "", unitPrice: "" };
 }
 
 export default function ContractForm({
-  vendors,
-  defaultVendorId,
+  vendorNames,
   contract,
 }: {
-  vendors: Vendor[];
-  defaultVendorId?: string;
+  vendorNames: string[];
   contract?: ExistingContract;
 }) {
   const router = useRouter();
   const isEdit = Boolean(contract);
   const formRef = useRef<HTMLFormElement>(null);
 
-  const [vendorId, setVendorId] = useState(contract?.vendorId ?? defaultVendorId ?? "");
+  const [vendorName, setVendorName] = useState(contract?.vendorName ?? "");
+  const [category, setCategory] = useState<CategoryCode | "">(contract?.category ?? "");
   const [startDate, setStartDate] = useState(contract ? toDateInputValue(contract.startDate) : "");
   const [endDate, setEndDate] = useState(contract ? toDateInputValue(contract.endDate) : "");
   const [title, setTitle] = useState(contract?.title ?? "");
@@ -56,7 +53,6 @@ export default function ContractForm({
     contract && contract.items.length > 0
       ? contract.items.map((i) => ({
           itemName: i.itemName,
-          category: i.category,
           unit: i.unit,
           unitPrice: String(i.unitPrice),
         }))
@@ -104,17 +100,33 @@ export default function ContractForm({
 
       <div className="grid grid-cols-2 gap-4 rounded-md border border-gray-200 bg-white p-4">
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">업체 *</label>
+          <label className="mb-1 block text-xs font-medium text-gray-600">업체명 *</label>
+          <input
+            name="vendorName"
+            list="vendor-name-options"
+            value={vendorName}
+            onChange={(e) => setVendorName(e.target.value)}
+            placeholder="업체명을 입력해 주세요"
+            className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm"
+          />
+          <datalist id="vendor-name-options">
+            {vendorNames.map((name) => (
+              <option key={name} value={name} />
+            ))}
+          </datalist>
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-gray-600">카테고리 *</label>
           <select
-            name="vendorId"
-            value={vendorId}
-            onChange={(e) => setVendorId(e.target.value)}
+            name="category"
+            value={category}
+            onChange={(e) => setCategory(e.target.value as CategoryCode)}
             className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm"
           >
-            <option value="">업체 선택</option>
-            {vendors.map((v) => (
-              <option key={v.id} value={v.id}>
-                {v.name}
+            <option value="">카테고리 선택</option>
+            {CATEGORIES.map((c) => (
+              <option key={c} value={c}>
+                {CATEGORY_LABELS[c]}
               </option>
             ))}
           </select>
@@ -174,7 +186,6 @@ export default function ContractForm({
           <thead className="text-left text-xs font-medium text-gray-500">
             <tr>
               <th className="px-2 py-1">품명</th>
-              <th className="px-2 py-1">카테고리</th>
               <th className="px-2 py-1">단위</th>
               <th className="px-2 py-1">단가</th>
               <th className="px-2 py-1" />
@@ -189,20 +200,6 @@ export default function ContractForm({
                     onChange={(e) => updateItem(index, { itemName: e.target.value })}
                     className="w-full rounded border border-gray-300 px-2 py-1 text-sm"
                   />
-                </td>
-                <td className="px-2 py-1">
-                  <select
-                    value={row.category}
-                    onChange={(e) => updateItem(index, { category: e.target.value as CategoryCode })}
-                    className="w-full rounded border border-gray-300 px-2 py-1 text-sm"
-                  >
-                    <option value="">선택</option>
-                    {CATEGORIES.map((c) => (
-                      <option key={c} value={c}>
-                        {CATEGORY_LABELS[c]}
-                      </option>
-                    ))}
-                  </select>
                 </td>
                 <td className="px-2 py-1">
                   <input

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
+import { CATEGORY_LABELS } from "@/lib/categories";
 
 export default async function ContractsPage() {
   const contracts = await db.contract.findMany({
@@ -30,6 +31,7 @@ export default async function ContractsPage() {
           <thead className="bg-gray-50 text-left text-xs font-medium text-gray-500">
             <tr>
               <th className="px-4 py-2">업체</th>
+              <th className="px-4 py-2">카테고리</th>
               <th className="px-4 py-2">계약기간</th>
               <th className="px-4 py-2">품목 수</th>
               <th className="px-4 py-2">상태</th>
@@ -42,6 +44,7 @@ export default async function ContractsPage() {
               return (
                 <tr key={c.id}>
                   <td className="px-4 py-2 font-medium text-gray-900">{c.vendor.name}</td>
+                  <td className="px-4 py-2 text-gray-600">{CATEGORY_LABELS[c.category]}</td>
                   <td className="px-4 py-2 text-gray-600">
                     {c.startDate.toISOString().slice(0, 10)} ~ {c.endDate.toISOString().slice(0, 10)}
                   </td>
@@ -65,7 +68,7 @@ export default async function ContractsPage() {
             })}
             {contracts.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-6 text-center text-gray-400">
+                <td colSpan={6} className="px-4 py-6 text-center text-gray-400">
                   등록된 계약이 없습니다.
                 </td>
               </tr>

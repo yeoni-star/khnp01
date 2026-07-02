@@ -7,7 +7,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
 }
 
 enum Restaurant {
@@ -36,7 +36,7 @@ enum MatchType {
 
 model Vendor {
   id         String   @id @default(cuid())
-  name       String
+  name       String   @unique
   businessNo String?
   contact    String?
   memo       String?
@@ -53,6 +53,7 @@ model Contract {
   id        String   @id @default(cuid())
   vendorId  String
   vendor    Vendor   @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+  category  Category
   startDate DateTime
   endDate   DateTime
   title     String?
