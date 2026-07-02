@@ -114,9 +114,6 @@ export async function confirmSlip(slipId: string, itemsJson: string): Promise<Ac
     return { ok: false, message: "품목을 1개 이상 입력해 주세요." };
   }
   for (const row of parsed.items) {
-    if (!row.category) {
-      return { ok: false, message: `"${row.itemName}"의 카테고리를 선택해 주세요.` };
-    }
     if (!row.unit) {
       return { ok: false, message: `"${row.itemName}"의 단위를 입력해 주세요.` };
     }
