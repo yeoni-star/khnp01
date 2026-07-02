@@ -1,0 +1,124 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum Restaurant {
+  A
+  B
+}
+
+enum Category {
+  GRAIN // 양곡
+  KIMCHI // 김치류
+  PRODUCE // 농수산물
+  PROCESSED // 공산품
+  MEAT // 육류
+}
+
+enum SlipStatus {
+  DRAFT
+  CONFIRMED
+}
+
+enum MatchType {
+  EXACT
+  FUZZY_CONFIRMED
+  NONE
+}
+
+model Vendor {
+  id         String   @id @default(cuid())
+  name       String
+  businessNo String?
+  contact    String?
+  memo       String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  contracts     Contract[]
+  deliverySlips DeliverySlip[]
+
+  @@index([name])
+}
+
+model Contract {
+  id         String     @id @default(cuid())
+  restaurant Restaurant
+  vendorId   String
+  vendor     Vendor     @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+  startDate  DateTime
+  endDate    DateTime
+  title      String?
+  memo       String?
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  items ContractItem[]
+
+  @@index([restaurant, vendorId])
+  @@index([startDate, endDate])
+}
+
+model ContractItem {
+  id         String   @id @default(cuid())
+  contractId String
+  contract   Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  itemName   String
+  category   Category
+  unit       String
+  unitPrice  Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([contractId, itemName])
+  @@index([itemName])
+}
+
+model DeliverySlip {
+  id             String     @id @default(cuid())
+  restaurant     Restaurant
+  vendorId       String
+  vendor         Vendor     @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+  deliveryDate   DateTime
+  status         SlipStatus @default(DRAFT)
+  sourceType     String     @default("MANUAL")
+  sourceFileUrl  String?
+  ocrRawResponse String?
+  confirmedAt    DateTime?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  items DeliverySlipItem[]
+
+  @@index([restaurant, deliveryDate])
+  @@index([vendorId, deliveryDate])
+  @@index([status])
+}
+
+model DeliverySlipItem {
+  id                    String       @id @default(cuid())
+  slipId                String
+  slip                  DeliverySlip @relation(fields: [slipId], references: [id], onDelete: Cascade)
+  itemName              String
+  category              Category?
+  quantity              Float
+  unit                  String
+  unitPrice             Int
+  amount                Int
+  matchedContractItemId String?
+  matchType             MatchType    @default(NONE)
+  priceOverridden       Boolean      @default(false)
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+
+  @@index([slipId])
+  @@index([itemName, category])
+}

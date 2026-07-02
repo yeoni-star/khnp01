@@ -1,0 +1,61 @@
+import { notFound } from "next/navigation";
+import { db } from "@/lib/db";
+import { listActiveContractItems } from "@/lib/pricing";
+import { RESTAURANT_LABELS } from "@/lib/restaurants";
+import { isOcrConfigured } from "@/lib/env";
+import SlipItemsTable from "@/components/slips/SlipItemsTable";
+import DeleteSlipButton from "@/components/slips/DeleteSlipButton";
+
+export default async function SlipDetailPage({
+  params,
+}: {
+  params: Promise<{ slipId: string }>;
+}) {
+  const { slipId } = await params;
+  const slip = await db.deliverySlip.findUnique({
+    where: { id: slipId },
+    include: { vendor: true, items: true },
+  });
+  if (!slip) notFound();
+
+  const activeContractItems = await listActiveContractItems(slip.restaurant, slip.vendorId, slip.deliveryDate);
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-lg font-semibold text-gray-900">
+            {slip.vendor.name} · {slip.deliveryDate.toISOString().slice(0, 10)}
+          </h1>
+          <p className="mt-1 text-sm text-gray-600">
+            {RESTAURANT_LABELS[slip.restaurant]} · {slip.status === "CONFIRMED" ? "확정됨" : "임시저장"}
+          </p>
+        </div>
+        <DeleteSlipButton slipId={slip.id} />
+      </div>
+
+      <SlipItemsTable
+        slipId={slip.id}
+        status={slip.status}
+        contractItems={activeContractItems.map((i) => ({
+          id: i.id,
+          itemName: i.itemName,
+          category: i.category,
+          unit: i.unit,
+          unitPrice: i.unitPrice,
+        }))}
+        initialItems={slip.items.map((i) => ({
+          itemName: i.itemName,
+          category: i.category,
+          unit: i.unit,
+          quantity: i.quantity,
+          unitPrice: i.unitPrice,
+          matchedContractItemId: i.matchedContractItemId,
+          matchType: i.matchType,
+          priceOverridden: i.priceOverridden,
+        }))}
+        ocrEnabled={isOcrConfigured()}
+      />
+    </div>
+  );
+}
