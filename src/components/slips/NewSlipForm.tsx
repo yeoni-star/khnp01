@@ -31,6 +31,17 @@ export default function NewSlipForm({
     <form action={formAction} className="space-y-3 rounded-md border border-gray-200 bg-white p-4">
       <div className="grid grid-cols-2 gap-3">
         <div>
+          <label className="mb-1 block text-xs font-medium text-gray-600">납품일자 *</label>
+          <input
+            type="date"
+            name="deliveryDate"
+            required
+            value={dateStr}
+            onChange={(e) => setDateStr(e.target.value)}
+            className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm"
+          />
+        </div>
+        <div>
           <label className="mb-1 block text-xs font-medium text-gray-600">계약 *</label>
           {defaultVendor ? (
             <div>
@@ -60,17 +71,6 @@ export default function NewSlipForm({
               ))}
             </select>
           )}
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">납품일자 *</label>
-          <input
-            type="date"
-            name="deliveryDate"
-            required
-            value={dateStr}
-            onChange={(e) => setDateStr(e.target.value)}
-            className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm"
-          />
         </div>
       </div>
       {state && !state.ok && <p className="text-sm text-red-600">{state.message}</p>}
