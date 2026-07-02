@@ -4,6 +4,8 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createContract, updateContract } from "@/actions/contract-actions";
 import { CATEGORIES, CATEGORY_LABELS, type CategoryCode } from "@/lib/categories";
+import { createWorker } from "tesseract.js";
+import { parseContractLine } from "@/lib/ocr/parser";
 
 type ContractItemRow = {
   itemName: string;
@@ -59,6 +61,9 @@ export default function ContractForm({
       : [emptyRow()]
   );
 
+  const [ocrPending, setOcrPending] = useState(false);
+  const [ocrMessage, setOcrMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
+
   const boundAction = isEdit
     ? (formData: FormData) => updateContract(contract!.id, formData)
     : createContract;
@@ -84,6 +89,44 @@ export default function ContractForm({
 
   function removeRow(index: number) {
     setItems((prev) => (prev.length === 1 ? prev : prev.filter((_, i) => i !== index)));
+  }
+
+  async function handleFileUpload(file: File) {
+    setOcrPending(true);
+    setOcrMessage(null);
+    try {
+      const worker = await createWorker("kor+eng");
+      const { data } = await worker.recognize(file, {}, { text: true, blocks: true });
+      
+      const lines: string[] = [];
+      for (const block of data.blocks ?? []) {
+        for (const paragraph of block.paragraphs) {
+          for (const line of paragraph.lines) {
+            lines.push(line.text);
+          }
+        }
+      }
+
+      const parsedItems = lines.map(parseContractLine).filter((item): item is NonNullable<ReturnType<typeof parseContractLine>> => item !== null);
+
+      if (parsedItems.length > 0) {
+        setItems(parsedItems.map(item => ({
+          itemName: item.itemName,
+          unit: item.unit,
+          unitPrice: String(item.unitPrice)
+        })));
+        setOcrMessage({ type: "success", text: `${parsedItems.length}개 품목을 인식했습니다. 검수해 주세요.` });
+      } else {
+        setOcrMessage({ type: "error", text: "단가표를 인식하지 못했습니다. 직접 입력해 주세요." });
+      }
+
+      await worker.terminate();
+    } catch (error) {
+      console.error("OCR Error", error);
+      setOcrMessage({ type: "error", text: "이미지 인식 중 오류가 발생했습니다." });
+    } finally {
+      setOcrPending(false);
+    }
   }
 
   const itemsJson = JSON.stringify(
@@ -172,16 +215,37 @@ export default function ContractForm({
       </div>
 
       <div className="rounded-md border border-gray-200 bg-white p-4">
-        <div className="mb-3 flex items-center justify-between">
+        <div className="mb-3 flex flex-col items-start justify-between gap-2 sm:flex-row sm:items-center">
           <h2 className="text-sm font-semibold text-gray-900">단가표</h2>
-          <button
-            type="button"
-            onClick={addRow}
-            className="rounded border border-gray-300 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50"
-          >
-            + 품목 추가
-          </button>
+          <div className="flex items-center gap-2">
+            <label className="cursor-pointer rounded border border-gray-300 bg-gray-50 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-100">
+              {ocrPending ? "인식 중..." : "이미지로 채우기"}
+              <input
+                type="file"
+                accept="image/jpeg,image/png"
+                className="hidden"
+                disabled={ocrPending}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) void handleFileUpload(file);
+                  e.target.value = "";
+                }}
+              />
+            </label>
+            <button
+              type="button"
+              onClick={addRow}
+              className="rounded border border-gray-300 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50"
+            >
+              + 품목 추가
+            </button>
+          </div>
         </div>
+        {ocrMessage && (
+          <p className={`mb-3 text-xs ${ocrMessage.type === "error" ? "text-red-600" : "text-blue-600"}`}>
+            {ocrMessage.text}
+          </p>
+        )}
         <table className="w-full text-sm">
           <thead className="text-left text-xs font-medium text-gray-500">
             <tr>

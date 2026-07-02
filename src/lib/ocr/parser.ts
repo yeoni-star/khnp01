@@ -55,6 +55,39 @@ export function parseLine(text: string): OcrItem | null {
   return { itemName, quantity, unit, unitPrice, amount };
 }
 
+/** 단가표 전용 파서: 한 줄에 숫자가 1개만 있어도 단가로 간주함 */
+export function parseContractLine(text: string): { itemName: string; unit: string; unitPrice: number } | null {
+  const tokens = text.trim().split(/\s+/).filter(Boolean);
+  if (tokens.length === 0) return null;
+
+  const numberIndexes: number[] = [];
+  tokens.forEach((t, i) => {
+    if (isNumberToken(t)) numberIndexes.push(i);
+  });
+
+  if (numberIndexes.length === 0) return null;
+
+  const priceIndex = numberIndexes[numberIndexes.length - 1];
+  const unitPrice = parseNumber(tokens[priceIndex]);
+
+  const nameTokens: string[] = [];
+  let unit: string = "";
+  tokens.forEach((t, i) => {
+    if (i === priceIndex) return;
+    if (isNumberToken(t)) return; // 단가 외의 숫자는 무시 (번호열 등)
+    if (!unit && UNIT_PATTERN.test(t)) {
+      unit = t;
+      return;
+    }
+    nameTokens.push(t);
+  });
+
+  const itemName = nameTokens.join(" ").trim();
+  if (!itemName) return null;
+
+  return { itemName, unit, unitPrice };
+}
+
 export function guessDeliveryDate(fullText: string): string | null {
   const match = fullText.match(/(\d{2,4})[.\-/](\d{1,2})[.\-/](\d{1,2})/);
   if (!match) return null;
