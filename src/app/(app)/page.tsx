@@ -55,12 +55,12 @@ export default async function DashboardPage() {
 
       <div>
         <h2 className="mb-2 text-sm font-semibold text-gray-900">바로가기</h2>
-        <div className="flex flex-wrap gap-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {quickLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              className="rounded border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
+              className="flex items-center justify-center rounded-lg bg-blue-50 px-6 py-4 text-base font-bold text-blue-700 shadow-sm transition-all hover:bg-blue-100 hover:shadow-md"
             >
               {link.label}
             </Link>
