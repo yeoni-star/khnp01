@@ -1,52 +1,98 @@
-import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
-import { getClaudeClient, OCR_MODEL } from "./claude-client";
-import { OCR_SYSTEM_PROMPT, OCR_USER_PROMPT } from "./prompt";
-import { ocrResultSchema, type OcrResult } from "./schema";
+import os from "node:os";
+import { createWorker } from "tesseract.js";
+import type { OcrItem, OcrResult } from "./schema";
 
-export async function extractSlipFromFile(params: {
-  base64: string;
-  mediaType: "image/jpeg" | "image/png" | "application/pdf";
-  apiKey: string;
-}): Promise<OcrResult> {
-  const client = getClaudeClient(params.apiKey);
+const UNIT_PATTERN = /^(kg|g|ml|l|ea|box|말|포|병|캔|팩|줄|단|모|쪽|개|장|통|봉|묶음)$/i;
+const NUMBER_PATTERN = /^[₩]?[\d][\d,]*(\.\d+)?원?$/;
 
-  const fileBlock =
-    params.mediaType === "application/pdf"
-      ? {
-          type: "document" as const,
-          source: {
-            type: "base64" as const,
-            media_type: "application/pdf" as const,
-            data: params.base64,
-          },
-        }
-      : {
-          type: "image" as const,
-          source: {
-            type: "base64" as const,
-            media_type: params.mediaType,
-            data: params.base64,
-          },
-        };
+function isNumberToken(token: string): boolean {
+  return NUMBER_PATTERN.test(token);
+}
 
-  const response = await client.messages.parse({
-    model: OCR_MODEL,
-    max_tokens: 4096,
-    thinking: { type: "disabled" },
-    system: OCR_SYSTEM_PROMPT,
-    messages: [
-      {
-        role: "user",
-        content: [fileBlock, { type: "text", text: OCR_USER_PROMPT }],
-      },
-    ],
-    output_config: {
-      format: zodOutputFormat(ocrResultSchema),
-    },
+function parseNumber(token: string): number {
+  return Number(token.replace(/[₩,원]/g, ""));
+}
+
+/** 한 줄의 텍스트를 품목명/수량/단위/단가/금액으로 휴리스틱하게 분리한다. */
+function parseLine(text: string): OcrItem | null {
+  const tokens = text.trim().split(/\s+/).filter(Boolean);
+  if (tokens.length === 0) return null;
+
+  const numberIndexes: number[] = [];
+  tokens.forEach((t, i) => {
+    if (isNumberToken(t)) numberIndexes.push(i);
+  });
+  // 숫자가 2개 미만이면 품목 행이 아닌 것(표 제목, 안내문 등)으로 판단
+  if (numberIndexes.length < 2) return null;
+
+  const usedCount = Math.min(3, numberIndexes.length);
+  const usedIndexes = numberIndexes.slice(-usedCount);
+  const numbers = usedIndexes.map((i) => parseNumber(tokens[i]));
+
+  let quantity: number | null;
+  let unitPrice: number | null;
+  let amount: number | null;
+  if (usedCount === 2) {
+    [quantity, unitPrice] = numbers;
+    amount = quantity !== null && unitPrice !== null ? Math.round(quantity * unitPrice) : null;
+  } else {
+    [quantity, unitPrice, amount] = numbers;
+  }
+
+  const nameTokens: string[] = [];
+  let unit: string | null = null;
+  tokens.forEach((t, i) => {
+    if (usedIndexes.includes(i)) return;
+    if (isNumberToken(t)) return; // 번호 열 등 사용하지 않는 숫자는 건너뜀
+    if (unit === null && UNIT_PATTERN.test(t)) {
+      unit = t;
+      return;
+    }
+    nameTokens.push(t);
   });
 
-  if (!response.parsed_output) {
-    throw new Error("OCR 응답을 해석할 수 없습니다.");
+  const itemName = nameTokens.join(" ").trim();
+  if (!itemName) return null;
+
+  return { itemName, quantity, unit, unitPrice, amount };
+}
+
+function guessDeliveryDate(fullText: string): string | null {
+  const match = fullText.match(/(\d{2,4})[.\-/](\d{1,2})[.\-/](\d{1,2})/);
+  if (!match) return null;
+  const [, yRaw, mRaw, dRaw] = match;
+  const year = yRaw.length === 2 ? `20${yRaw}` : yRaw;
+  return `${year}-${mRaw.padStart(2, "0")}-${dRaw.padStart(2, "0")}`;
+}
+
+function guessVendorName(fullText: string): string | null {
+  const match = fullText.match(/(?:업체명|상호|공급자)\s*[:：]?\s*(\S+)/);
+  return match ? match[1].trim() : null;
+}
+
+export async function extractSlipFromFile(params: { buffer: Buffer }): Promise<OcrResult> {
+  const worker = await createWorker("kor+eng", undefined, { cachePath: os.tmpdir() });
+  try {
+    const { data } = await worker.recognize(params.buffer, {}, { text: true, blocks: true });
+
+    const lines: string[] = [];
+    for (const block of data.blocks ?? []) {
+      for (const paragraph of block.paragraphs) {
+        for (const line of paragraph.lines) {
+          lines.push(line.text);
+        }
+      }
+    }
+
+    const items = lines.map(parseLine).filter((item): item is OcrItem => item !== null);
+
+    return {
+      vendorNameGuess: guessVendorName(data.text),
+      deliveryDateGuess: guessDeliveryDate(data.text),
+      items,
+      notes: items.length === 0 ? "품목을 자동으로 인식하지 못했습니다. 직접 입력해 주세요." : null,
+    };
+  } finally {
+    await worker.terminate();
   }
-  return response.parsed_output;
 }

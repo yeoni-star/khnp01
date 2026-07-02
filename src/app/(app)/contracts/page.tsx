@@ -59,9 +59,17 @@ export default async function ContractsPage() {
                     </span>
                   </td>
                   <td className="px-4 py-2 text-right">
-                    <Link href={`/contracts/${c.id}`} className="text-blue-600 hover:underline">
-                      상세
-                    </Link>
+                    <div className="flex justify-end gap-3">
+                      <Link
+                        href={`/slips/new?vendorId=${c.vendorId}`}
+                        className="text-blue-600 hover:underline"
+                      >
+                        거래명세표 입력
+                      </Link>
+                      <Link href={`/contracts/${c.id}`} className="text-blue-600 hover:underline">
+                        상세
+                      </Link>
+                    </div>
                   </td>
                 </tr>
               );
