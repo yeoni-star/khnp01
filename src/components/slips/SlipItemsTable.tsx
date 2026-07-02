@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 import { saveSlipDraft, confirmSlip } from "@/actions/slip-actions";
 import { CATEGORIES, CATEGORY_LABELS, type CategoryCode } from "@/lib/categories";
 import { findSimilarItem } from "@/lib/item-matching";
@@ -141,6 +142,7 @@ export default function SlipItemsTable({
   const [ocrPending, setOcrPending] = useState(false);
   const [ocrNote, setOcrNote] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [isImageFixed, setIsImageFixed] = useState(false);
   const readOnly = status === "CONFIRMED";
 
   function updateRow(key: string, patch: Partial<Row>) {
@@ -296,14 +298,37 @@ export default function SlipItemsTable({
     <div className="space-y-4">
       <div className={previewUrl ? "grid gap-4 md:grid-cols-[320px_1fr]" : ""}>
         {previewUrl && (
-          <div className="md:sticky md:top-4 md:self-start">
-            <p className="mb-1 text-xs font-medium text-gray-600">업로드한 원본 이미지</p>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={previewUrl}
-              alt="업로드한 거래명세표 원본"
-              className="w-full rounded-md border border-gray-200"
-            />
+          <div
+            className={
+              isImageFixed
+                ? "fixed top-4 left-4 z-50 w-[450px] rounded-lg border border-gray-300 bg-white p-3 shadow-2xl transition-all"
+                : "md:sticky md:top-4 md:self-start"
+            }
+          >
+            <div className="mb-2 flex items-center justify-between">
+              <p className="text-xs font-medium text-gray-600">업로드한 원본 이미지</p>
+              <button
+                type="button"
+                onClick={() => setIsImageFixed(!isImageFixed)}
+                className="rounded border border-gray-300 px-2 py-1 text-xs text-gray-700 hover:bg-gray-50"
+              >
+                {isImageFixed ? "고정 해제" : "화면 고정"}
+              </button>
+            </div>
+            <div className="overflow-hidden rounded-md border border-gray-200 bg-gray-50">
+              <TransformWrapper>
+                <TransformComponent>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={previewUrl}
+                    alt="업로드한 거래명세표 원본"
+                    className="w-full object-contain"
+                    style={isImageFixed ? { maxHeight: "80vh" } : undefined}
+                  />
+                </TransformComponent>
+              </TransformWrapper>
+            </div>
+            <p className="mt-2 text-center text-[10px] text-gray-400">마우스 휠로 확대/축소, 드래그로 이동</p>
           </div>
         )}
         <div className="space-y-4">
@@ -331,7 +356,6 @@ export default function SlipItemsTable({
           <thead className="bg-gray-50 text-left text-xs font-medium text-gray-500">
             <tr>
               <th className="px-2 py-2">품명</th>
-              <th className="px-2 py-2">카테고리</th>
               <th className="px-2 py-2">단위</th>
               <th className="px-2 py-2">수량</th>
               <th className="px-2 py-2">단가</th>
@@ -378,22 +402,6 @@ export default function SlipItemsTable({
                           </button>
                         </div>
                       </div>
-                    )}
-                  </td>
-                  <td className="px-2 py-2">
-                    <select
-                      value={row.category}
-                      disabled={readOnly}
-                      onChange={(e) => updateRow(row.key, { category: e.target.value as CategoryCode })}
-                      className="w-24 rounded border border-gray-300 px-2 py-1 text-sm disabled:bg-gray-100"
-                    >
-                      <option value="">선택</option>
-                      {CATEGORIES.map((c) => (
-                        <option key={c} value={c}>
-                          {CATEGORY_LABELS[c]}
-                        </option>
-                      ))}
-                    </select>
                   </td>
                   <td className="px-2 py-2">
                     <input
