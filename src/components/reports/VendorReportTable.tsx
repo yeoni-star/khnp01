@@ -129,7 +129,6 @@ export default function VendorReportTable({
                       className="w-full bg-transparent py-1 text-center text-xs outline-none"
                       value={reviewer1}
                       onChange={(e) => setReviewer1(e.target.value)}
-                      placeholder="이름 입력"
                     />
                   </td>
                   <td className="border border-gray-400">
@@ -138,7 +137,6 @@ export default function VendorReportTable({
                       className="w-full bg-transparent py-1 text-center text-xs outline-none"
                       value={reviewer2}
                       onChange={(e) => setReviewer2(e.target.value)}
-                      placeholder="이름 입력"
                     />
                   </td>
                 </tr>
