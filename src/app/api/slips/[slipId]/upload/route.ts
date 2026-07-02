@@ -3,7 +3,6 @@ import type { NextRequest } from "next/server";
 import { requireSession } from "@/lib/session";
 import { db } from "@/lib/db";
 import { saveUploadedFile } from "@/lib/storage";
-import { extractSlipFromFile } from "@/lib/ocr/extract";
 
 const ACCEPTED_TYPES: Record<string, "image/jpeg" | "image/png"> = {
   "image/jpeg": "image/jpeg",
@@ -45,29 +44,16 @@ export async function POST(
   });
 
   try {
-    const ocrResult = await extractSlipFromFile({ buffer });
-
-    await db.deliverySlip.update({
-      where: { id: slipId },
-      data: { ocrRawResponse: JSON.stringify(ocrResult) },
-    });
-
     return NextResponse.json({
       ok: true,
-      vendorNameGuess: ocrResult.vendorNameGuess,
-      deliveryDateGuess: ocrResult.deliveryDateGuess,
-      notes: ocrResult.notes,
-      items: ocrResult.items,
+      message: "파일이 저장되었습니다.",
+      sourceFileUrl,
     });
   } catch (error) {
-    console.error("OCR extraction failed", error);
+    console.error("Upload failed", error);
     return NextResponse.json(
-      {
-        ok: false,
-        code: "OCR_FAILED",
-        message: "이미지를 인식하지 못했습니다. 직접 입력해 주세요.",
-      },
-      { status: 200 }
+      { ok: false, message: "업로드에 실패했습니다." },
+      { status: 500 }
     );
   }
 }

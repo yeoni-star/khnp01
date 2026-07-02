@@ -6,6 +6,9 @@ import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 import { saveSlipDraft, confirmSlip } from "@/actions/slip-actions";
 import { CATEGORIES, CATEGORY_LABELS, type CategoryCode } from "@/lib/categories";
 import { findSimilarItem } from "@/lib/item-matching";
+import { createWorker } from "tesseract.js";
+import { parseLine, guessDeliveryDate, guessVendorName } from "@/lib/ocr/parser";
+import type { OcrItem } from "@/lib/ocr/schema";
 
 type ContractItemOption = {
   id: string;
@@ -157,16 +160,28 @@ export default function SlipItemsTable({
     setOcrPending(true);
     setOcrNote(null);
     setMessage(null);
+    
     try {
+      // 1. 서버에 이미지 파일 저장 요청 (Background 처리)
       const formData = new FormData();
       formData.append("file", file);
-      const res = await fetch(`/api/slips/${slipId}/ocr`, { method: "POST", body: formData });
-      const data = await res.json();
-      if (!res.ok || !data.ok) {
-        setMessage({ type: "error", text: data.message ?? "인식에 실패했습니다. 직접 입력해 주세요." });
-        return;
+      fetch(`/api/slips/${slipId}/upload`, { method: "POST", body: formData }).catch(console.error);
+
+      // 2. 클라이언트 브라우저에서 Tesseract.js 실행
+      const worker = await createWorker("kor+eng");
+      const { data } = await worker.recognize(file, {}, { text: true, blocks: true });
+      
+      const lines: string[] = [];
+      for (const block of data.blocks ?? []) {
+        for (const paragraph of block.paragraphs) {
+          for (const line of paragraph.lines) {
+            lines.push(line.text);
+          }
+        }
       }
-      const items = (data.items as OcrDraftItem[]) ?? [];
+
+      const items = lines.map(parseLine).filter((item): item is OcrItem => item !== null);
+
       if (items.length > 0) {
         setRows(
           items.map((item) =>
@@ -174,14 +189,22 @@ export default function SlipItemsTable({
           )
         );
       }
+
+      const vName = guessVendorName(data.text);
+      const dDate = guessDeliveryDate(data.text);
+      
       const noteParts: string[] = [];
-      if (data.vendorNameGuess) noteParts.push(`업체 추정: ${data.vendorNameGuess}`);
-      if (data.deliveryDateGuess) noteParts.push(`날짜 추정: ${data.deliveryDateGuess}`);
-      if (data.notes) noteParts.push(data.notes);
+      if (vName) noteParts.push(`업체 추정: ${vName}`);
+      if (dDate) noteParts.push(`날짜 추정: ${dDate}`);
+      if (items.length === 0) noteParts.push("품목을 자동으로 인식하지 못했습니다. 직접 입력해 주세요.");
+      
       setOcrNote(noteParts.length > 0 ? noteParts.join(" · ") : null);
       setMessage({ type: "success", text: `${items.length}개 품목을 인식했습니다. 검수 후 저장해 주세요.` });
-    } catch {
-      setMessage({ type: "error", text: "업로드 중 오류가 발생했습니다. 직접 입력해 주세요." });
+
+      await worker.terminate();
+    } catch (error) {
+      console.error("OCR Error", error);
+      setMessage({ type: "error", text: "업로드/인식 중 오류가 발생했습니다. 직접 입력해 주세요." });
     } finally {
       setOcrPending(false);
     }

@@ -1,5 +1,3 @@
-import os from "node:os";
-import { createWorker } from "tesseract.js";
 import type { OcrItem, OcrResult } from "./schema";
 
 const UNIT_PATTERN = /^(kg|g|ml|l|ea|box|말|포|병|캔|팩|줄|단|모|쪽|개|장|통|봉|묶음)$/i;
@@ -14,7 +12,7 @@ function parseNumber(token: string): number {
 }
 
 /** 한 줄의 텍스트를 품목명/수량/단위/단가/금액으로 휴리스틱하게 분리한다. */
-function parseLine(text: string): OcrItem | null {
+export function parseLine(text: string): OcrItem | null {
   const tokens = text.trim().split(/\s+/).filter(Boolean);
   if (tokens.length === 0) return null;
 
@@ -29,9 +27,9 @@ function parseLine(text: string): OcrItem | null {
   const usedIndexes = numberIndexes.slice(-usedCount);
   const numbers = usedIndexes.map((i) => parseNumber(tokens[i]));
 
-  let quantity: number | null;
-  let unitPrice: number | null;
-  let amount: number | null;
+  let quantity: number | null = null;
+  let unitPrice: number | null = null;
+  let amount: number | null = null;
   if (usedCount === 2) {
     [quantity, unitPrice] = numbers;
     amount = quantity !== null && unitPrice !== null ? Math.round(quantity * unitPrice) : null;
@@ -57,7 +55,7 @@ function parseLine(text: string): OcrItem | null {
   return { itemName, quantity, unit, unitPrice, amount };
 }
 
-function guessDeliveryDate(fullText: string): string | null {
+export function guessDeliveryDate(fullText: string): string | null {
   const match = fullText.match(/(\d{2,4})[.\-/](\d{1,2})[.\-/](\d{1,2})/);
   if (!match) return null;
   const [, yRaw, mRaw, dRaw] = match;
@@ -65,34 +63,7 @@ function guessDeliveryDate(fullText: string): string | null {
   return `${year}-${mRaw.padStart(2, "0")}-${dRaw.padStart(2, "0")}`;
 }
 
-function guessVendorName(fullText: string): string | null {
+export function guessVendorName(fullText: string): string | null {
   const match = fullText.match(/(?:업체명|상호|공급자)\s*[:：]?\s*(\S+)/);
   return match ? match[1].trim() : null;
-}
-
-export async function extractSlipFromFile(params: { buffer: Buffer }): Promise<OcrResult> {
-  const worker = await createWorker("kor+eng", undefined, { cachePath: os.tmpdir() });
-  try {
-    const { data } = await worker.recognize(params.buffer, {}, { text: true, blocks: true });
-
-    const lines: string[] = [];
-    for (const block of data.blocks ?? []) {
-      for (const paragraph of block.paragraphs) {
-        for (const line of paragraph.lines) {
-          lines.push(line.text);
-        }
-      }
-    }
-
-    const items = lines.map(parseLine).filter((item): item is OcrItem => item !== null);
-
-    return {
-      vendorNameGuess: guessVendorName(data.text),
-      deliveryDateGuess: guessDeliveryDate(data.text),
-      items,
-      notes: items.length === 0 ? "품목을 자동으로 인식하지 못했습니다. 직접 입력해 주세요." : null,
-    };
-  } finally {
-    await worker.terminate();
-  }
 }
