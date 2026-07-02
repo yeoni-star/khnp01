@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import ExportCsvButton from "../unmatched-items/ExportCsvButton";
 import { getSession } from "@/lib/session";
 import { buildQuantityReport } from "@/lib/quantity-aggregate";
 import { CATEGORIES, CATEGORY_LABELS, type CategoryCode } from "@/lib/categories";
@@ -37,6 +38,13 @@ export default async function RequiredQuantityPage({
     new Date(`${end}T23:59:59.999Z`),
     { vendorId: vendorId || undefined, category }
   );
+
+  const exportData = rows.map((r) => ({
+    품명: r.itemName,
+    카테고리: r.category ? CATEGORY_LABELS[r.category] : "-",
+    단위: r.unit,
+    "기간 내 총수량": r.totalQuantity,
+  }));
 
   return (
     <div className="space-y-6">
@@ -99,13 +107,14 @@ export default async function RequiredQuantityPage({
             ))}
           </select>
         </div>
-        <div className="col-span-2 sm:col-span-4">
+        <div className="col-span-2 flex items-center gap-2 sm:col-span-4">
           <button
             type="submit"
             className="rounded bg-blue-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
           >
             조회
           </button>
+          <ExportCsvButton data={exportData} filename={`소요수량산출_${start}_${end}.csv`} />
         </div>
       </form>
 
