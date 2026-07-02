@@ -1,36 +1,58 @@
 import { db } from "@/lib/db";
 import { getSession } from "@/lib/session";
-import { CATEGORY_LABELS, type CategoryCode } from "@/lib/categories";
+import { CATEGORY_LABELS } from "@/lib/categories";
+import DateFilter from "./DateFilter";
+import ExportCsvButton from "./ExportCsvButton";
 
-export default async function UnmatchedItemsPage() {
+export default async function UnmatchedItemsPage(props: {
+  searchParams: Promise<{ startDate?: string; endDate?: string }>;
+}) {
   const session = await getSession();
+  const searchParams = await props.searchParams;
+
+  const dateFilter: any = {};
+  if (searchParams.startDate) {
+    dateFilter.gte = new Date(searchParams.startDate);
+  }
+  if (searchParams.endDate) {
+    dateFilter.lte = new Date(searchParams.endDate);
+  }
+
   const items = await db.deliverySlipItem.findMany({
     where: {
       matchType: "NONE",
-      slip: { restaurant: session!.restaurant },
+      slip: {
+        restaurant: session!.restaurant,
+        ...(Object.keys(dateFilter).length > 0 ? { deliveryDate: dateFilter } : {}),
+      },
     },
     include: { slip: { include: { vendor: true } } },
     orderBy: { createdAt: "desc" },
   });
 
-  const grouped = new Map<
-    string,
-    { itemName: string; category: CategoryCode | null; count: number; vendors: Set<string> }
-  >();
-  for (const item of items) {
-    const key = item.itemName.trim().toLowerCase();
-    const entry = grouped.get(key) ?? {
-      itemName: item.itemName,
-      category: item.category,
-      count: 0,
-      vendors: new Set<string>(),
-    };
-    entry.count += 1;
-    entry.vendors.add(item.slip.vendor.name);
-    grouped.set(key, entry);
-  }
+  // Fetch all active contracts to map vendor + date to category
+  const vendorIds = Array.from(new Set(items.map((i) => i.slip.vendorId)));
+  const contracts = await db.contract.findMany({
+    where: { vendorId: { in: vendorIds } },
+  });
 
-  const rows = Array.from(grouped.values());
+  const rows = items.map((item) => {
+    // Find active contract for this vendor on the delivery date
+    const dDate = item.slip.deliveryDate;
+    const activeContract = contracts.find(
+      (c) => c.vendorId === item.slip.vendorId && c.startDate <= dDate && c.endDate >= dDate
+    );
+
+    const categoryCode = activeContract?.category ?? item.category;
+
+    return {
+      납품일자: item.slip.deliveryDate.toISOString().slice(0, 10),
+      품명: item.itemName,
+      카테고리: categoryCode ? CATEGORY_LABELS[categoryCode] : "-",
+      단가: item.unitPrice,
+      업체명: item.slip.vendor.name,
+    };
+  });
 
   return (
     <div className="space-y-6">
@@ -41,31 +63,36 @@ export default async function UnmatchedItemsPage() {
         </p>
       </div>
 
+      <div className="flex items-center justify-between">
+        <DateFilter />
+        <ExportCsvButton data={rows} filename={`미등록품목_${new Date().toISOString().slice(0, 10)}.csv`} />
+      </div>
+
       <div className="overflow-hidden rounded-md border border-gray-200 bg-white">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 text-left text-xs font-medium text-gray-500">
             <tr>
+              <th className="px-4 py-2">납품일자</th>
               <th className="px-4 py-2">품명</th>
               <th className="px-4 py-2">카테고리</th>
+              <th className="px-4 py-2">단가</th>
               <th className="px-4 py-2">업체</th>
-              <th className="px-4 py-2">등장 횟수</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {rows.map((row) => (
-              <tr key={row.itemName}>
-                <td className="px-4 py-2 font-medium text-gray-900">{row.itemName}</td>
-                <td className="px-4 py-2 text-gray-600">
-                  {row.category ? CATEGORY_LABELS[row.category] : "-"}
-                </td>
-                <td className="px-4 py-2 text-gray-600">{Array.from(row.vendors).join(", ")}</td>
-                <td className="px-4 py-2 text-gray-600">{row.count}</td>
+            {rows.map((row, index) => (
+              <tr key={index}>
+                <td className="px-4 py-2 text-gray-900">{row.납품일자}</td>
+                <td className="px-4 py-2 font-medium text-gray-900">{row.품명}</td>
+                <td className="px-4 py-2 text-gray-600">{row.카테고리}</td>
+                <td className="px-4 py-2 text-gray-900">{row.단가.toLocaleString()}원</td>
+                <td className="px-4 py-2 text-gray-600">{row.업체명}</td>
               </tr>
             ))}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={4} className="px-4 py-6 text-center text-gray-400">
-                  미등록 품목이 없습니다.
+                <td colSpan={5} className="px-4 py-6 text-center text-gray-400">
+                  해당 기간에 미등록 품목이 없습니다.
                 </td>
               </tr>
             )}
