@@ -6,12 +6,12 @@ import {
   SESSION_MAX_AGE_SECONDS,
   createSessionCookieValue,
 } from "@/lib/session";
-import { isRestaurantCode } from "@/lib/restaurants";
+
+const DEFAULT_RESTAURANT = "A";
 
 export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => null);
   const password = typeof body?.password === "string" ? body.password : "";
-  const restaurant = typeof body?.restaurant === "string" ? body.restaurant : "";
 
   if (!checkPassword(password)) {
     return NextResponse.json(
@@ -19,15 +19,9 @@ export async function POST(request: NextRequest) {
       { status: 401 }
     );
   }
-  if (!isRestaurantCode(restaurant)) {
-    return NextResponse.json(
-      { ok: false, message: "식당을 선택해 주세요." },
-      { status: 400 }
-    );
-  }
 
   const response = NextResponse.json({ ok: true });
-  response.cookies.set(SESSION_COOKIE_NAME, createSessionCookieValue(restaurant), {
+  response.cookies.set(SESSION_COOKIE_NAME, createSessionCookieValue(DEFAULT_RESTAURANT), {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",

@@ -50,20 +50,19 @@ model Vendor {
 }
 
 model Contract {
-  id         String     @id @default(cuid())
-  restaurant Restaurant
-  vendorId   String
-  vendor     Vendor     @relation(fields: [vendorId], references: [id], onDelete: Restrict)
-  startDate  DateTime
-  endDate    DateTime
-  title      String?
-  memo       String?
-  createdAt  DateTime   @default(now())
-  updatedAt  DateTime   @updatedAt
+  id        String   @id @default(cuid())
+  vendorId  String
+  vendor    Vendor   @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+  startDate DateTime
+  endDate   DateTime
+  title     String?
+  memo      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   items ContractItem[]
 
-  @@index([restaurant, vendorId])
+  @@index([vendorId])
   @@index([startDate, endDate])
 }
 

@@ -47,7 +47,6 @@ describe("findActiveContractItem / hasOverlappingContract (integration)", () => 
     vendorId = vendor.id;
     const contract = await db.contract.create({
       data: {
-        restaurant: "A",
         vendorId,
         startDate: new Date("2026-01-01"),
         endDate: new Date("2026-06-30"),
@@ -66,33 +65,32 @@ describe("findActiveContractItem / hasOverlappingContract (integration)", () => 
   });
 
   it("계약기간 내 날짜 + 정확한 품목명이면 단가를 찾는다", async () => {
-    const item = await findActiveContractItem("A", vendorId, "식용유", new Date("2026-03-15"));
+    const item = await findActiveContractItem(vendorId, "식용유", new Date("2026-03-15"));
     expect(item?.unitPrice).toBe(46200);
   });
 
   it("공백/대소문자가 달라도 정규화하여 매칭한다", async () => {
-    const item = await findActiveContractItem("A", vendorId, "  식용유  ", new Date("2026-03-15"));
+    const item = await findActiveContractItem(vendorId, "  식용유  ", new Date("2026-03-15"));
     expect(item?.unitPrice).toBe(46200);
   });
 
   it("계약기간 밖의 날짜면 null", async () => {
-    const item = await findActiveContractItem("A", vendorId, "식용유", new Date("2026-12-01"));
+    const item = await findActiveContractItem(vendorId, "식용유", new Date("2026-12-01"));
     expect(item).toBeNull();
   });
 
   it("겹치는 기간의 새 계약은 overlap=true", async () => {
-    const overlap = await hasOverlappingContract("A", vendorId, new Date("2026-06-01"), new Date("2026-09-30"));
+    const overlap = await hasOverlappingContract(vendorId, new Date("2026-06-01"), new Date("2026-09-30"));
     expect(overlap).toBe(true);
   });
 
   it("겹치지 않는 기간은 overlap=false", async () => {
-    const overlap = await hasOverlappingContract("A", vendorId, new Date("2026-07-01"), new Date("2026-09-30"));
+    const overlap = await hasOverlappingContract(vendorId, new Date("2026-07-01"), new Date("2026-09-30"));
     expect(overlap).toBe(false);
   });
 
   it("자기 자신을 제외하면 overlap=false", async () => {
     const overlap = await hasOverlappingContract(
-      "A",
       vendorId,
       new Date("2026-01-01"),
       new Date("2026-06-30"),

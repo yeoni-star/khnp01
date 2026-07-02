@@ -3,7 +3,6 @@
 import { useActionState, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createContract, updateContract } from "@/actions/contract-actions";
-import { RESTAURANTS, RESTAURANT_LABELS, type RestaurantCode } from "@/lib/restaurants";
 import { CATEGORIES, CATEGORY_LABELS, type CategoryCode } from "@/lib/categories";
 
 type Vendor = { id: string; name: string };
@@ -17,7 +16,6 @@ type ContractItemRow = {
 
 type ExistingContract = {
   id: string;
-  restaurant: RestaurantCode;
   vendorId: string;
   startDate: Date;
   endDate: Date;
@@ -49,7 +47,6 @@ export default function ContractForm({
   const isEdit = Boolean(contract);
   const formRef = useRef<HTMLFormElement>(null);
 
-  const [restaurant, setRestaurant] = useState<RestaurantCode>(contract?.restaurant ?? "A");
   const [vendorId, setVendorId] = useState(contract?.vendorId ?? defaultVendorId ?? "");
   const [startDate, setStartDate] = useState(contract ? toDateInputValue(contract.startDate) : "");
   const [endDate, setEndDate] = useState(contract ? toDateInputValue(contract.endDate) : "");
@@ -103,22 +100,9 @@ export default function ContractForm({
     <form ref={formRef} action={formAction} className="space-y-6">
       <input type="hidden" name="itemsJson" value={itemsJson} />
 
+      <p className="text-xs text-gray-500">계약과 단가표는 식당 A/B 공통으로 적용됩니다.</p>
+
       <div className="grid grid-cols-2 gap-4 rounded-md border border-gray-200 bg-white p-4">
-        <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">식당 *</label>
-          <select
-            name="restaurant"
-            value={restaurant}
-            onChange={(e) => setRestaurant(e.target.value as RestaurantCode)}
-            className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm"
-          >
-            {RESTAURANTS.map((code) => (
-              <option key={code} value={code}>
-                {RESTAURANT_LABELS[code]}
-              </option>
-            ))}
-          </select>
-        </div>
         <div>
           <label className="mb-1 block text-xs font-medium text-gray-600">업체 *</label>
           <select

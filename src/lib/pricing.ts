@@ -1,5 +1,4 @@
 import { db } from "./db";
-import type { RestaurantCode } from "./restaurants";
 
 export function normalizeItemName(itemName: string): string {
   return itemName.trim().toLowerCase();
@@ -15,7 +14,6 @@ export function contractsOverlap(
 }
 
 export async function hasOverlappingContract(
-  restaurant: RestaurantCode,
   vendorId: string,
   startDate: Date,
   endDate: Date,
@@ -23,7 +21,6 @@ export async function hasOverlappingContract(
 ): Promise<boolean> {
   const existing = await db.contract.findMany({
     where: {
-      restaurant,
       vendorId,
       ...(excludeContractId ? { id: { not: excludeContractId } } : {}),
     },
@@ -33,21 +30,15 @@ export async function hasOverlappingContract(
 }
 
 /**
- * 해당 식당+업체의 특정 날짜 기준 활성 계약에서, 품목명이 정확히 일치하는 단가표 항목을 찾는다.
+ * 업체의 특정 날짜 기준 활성 계약(두 식당 공통)에서, 품목명이 정확히 일치하는 단가표 항목을 찾는다.
  * 계약기간이 겹치는 경우는 생성 시점에 차단되므로, 활성 계약은 최대 1건이어야 정상이다.
  */
-export async function findActiveContractItem(
-  restaurant: RestaurantCode,
-  vendorId: string,
-  itemName: string,
-  onDate: Date
-) {
+export async function findActiveContractItem(vendorId: string, itemName: string, onDate: Date) {
   const normalized = normalizeItemName(itemName);
   if (!normalized) return null;
 
   const contract = await db.contract.findFirst({
     where: {
-      restaurant,
       vendorId,
       startDate: { lte: onDate },
       endDate: { gte: onDate },
@@ -63,15 +54,10 @@ export async function findActiveContractItem(
   );
 }
 
-/** 자유입력 및 유사매칭 제안용: 식당+업체의 활성 계약에 등록된 전체 품목 목록 */
-export async function listActiveContractItems(
-  restaurant: RestaurantCode,
-  vendorId: string,
-  onDate: Date
-) {
+/** 자유입력 및 유사매칭 제안용: 업체의 활성 계약(두 식당 공통)에 등록된 전체 품목 목록 */
+export async function listActiveContractItems(vendorId: string, onDate: Date) {
   const contract = await db.contract.findFirst({
     where: {
-      restaurant,
       vendorId,
       startDate: { lte: onDate },
       endDate: { gte: onDate },

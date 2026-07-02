@@ -4,7 +4,6 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireSession } from "@/lib/session";
-import { RESTAURANTS } from "@/lib/restaurants";
 import { CATEGORIES } from "@/lib/categories";
 import { hasOverlappingContract } from "@/lib/pricing";
 
@@ -18,7 +17,6 @@ const itemSchema = z.object({
 });
 
 const contractFormSchema = z.object({
-  restaurant: z.enum(RESTAURANTS, { message: "식당을 선택해 주세요." }),
   vendorId: z.string().min(1, "업체를 선택해 주세요."),
   startDate: z.string().min(1, "계약 시작일을 입력해 주세요."),
   endDate: z.string().min(1, "계약 종료일을 입력해 주세요."),
@@ -43,7 +41,6 @@ function parseItemsJson(itemsJson: string) {
 
 function parseContractForm(formData: FormData) {
   const parsed = contractFormSchema.safeParse({
-    restaurant: formData.get("restaurant"),
     vendorId: formData.get("vendorId"),
     startDate: formData.get("startDate"),
     endDate: formData.get("endDate"),
@@ -71,7 +68,6 @@ function parseContractForm(formData: FormData) {
 
   return {
     ok: true as const,
-    restaurant: parsed.data.restaurant,
     vendorId: parsed.data.vendorId,
     startDate,
     endDate,
@@ -86,19 +82,13 @@ export async function createContract(formData: FormData): Promise<ActionResult> 
   const parsed = parseContractForm(formData);
   if (!parsed.ok) return parsed;
 
-  const overlap = await hasOverlappingContract(
-    parsed.restaurant,
-    parsed.vendorId,
-    parsed.startDate,
-    parsed.endDate
-  );
+  const overlap = await hasOverlappingContract(parsed.vendorId, parsed.startDate, parsed.endDate);
   if (overlap) {
-    return { ok: false, message: "같은 업체·식당에 기간이 겹치는 계약이 이미 있습니다." };
+    return { ok: false, message: "같은 업체에 기간이 겹치는 계약이 이미 있습니다." };
   }
 
   await db.contract.create({
     data: {
-      restaurant: parsed.restaurant,
       vendorId: parsed.vendorId,
       startDate: parsed.startDate,
       endDate: parsed.endDate,
@@ -118,14 +108,13 @@ export async function updateContract(contractId: string, formData: FormData): Pr
   if (!parsed.ok) return parsed;
 
   const overlap = await hasOverlappingContract(
-    parsed.restaurant,
     parsed.vendorId,
     parsed.startDate,
     parsed.endDate,
     contractId
   );
   if (overlap) {
-    return { ok: false, message: "같은 업체·식당에 기간이 겹치는 계약이 이미 있습니다." };
+    return { ok: false, message: "같은 업체에 기간이 겹치는 계약이 이미 있습니다." };
   }
 
   await db.$transaction([
@@ -133,7 +122,6 @@ export async function updateContract(contractId: string, formData: FormData): Pr
     db.contract.update({
       where: { id: contractId },
       data: {
-        restaurant: parsed.restaurant,
         vendorId: parsed.vendorId,
         startDate: parsed.startDate,
         endDate: parsed.endDate,

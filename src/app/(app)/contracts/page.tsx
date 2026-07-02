@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
-import { RESTAURANT_LABELS } from "@/lib/restaurants";
 
 export default async function ContractsPage() {
   const contracts = await db.contract.findMany({
@@ -14,7 +13,9 @@ export default async function ContractsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-lg font-semibold text-gray-900">계약/단가표 관리</h1>
-          <p className="mt-1 text-sm text-gray-600">업체별 계약기간과 품목 단가표를 관리합니다.</p>
+          <p className="mt-1 text-sm text-gray-600">
+            업체별 계약기간과 품목 단가표를 관리합니다. (계약/단가는 식당 A/B 공통)
+          </p>
         </div>
         <Link
           href="/contracts/new"
@@ -28,7 +29,6 @@ export default async function ContractsPage() {
         <table className="w-full text-sm">
           <thead className="bg-gray-50 text-left text-xs font-medium text-gray-500">
             <tr>
-              <th className="px-4 py-2">식당</th>
               <th className="px-4 py-2">업체</th>
               <th className="px-4 py-2">계약기간</th>
               <th className="px-4 py-2">품목 수</th>
@@ -41,7 +41,6 @@ export default async function ContractsPage() {
               const isActive = c.startDate <= today && today <= c.endDate;
               return (
                 <tr key={c.id}>
-                  <td className="px-4 py-2">{RESTAURANT_LABELS[c.restaurant]}</td>
                   <td className="px-4 py-2 font-medium text-gray-900">{c.vendor.name}</td>
                   <td className="px-4 py-2 text-gray-600">
                     {c.startDate.toISOString().slice(0, 10)} ~ {c.endDate.toISOString().slice(0, 10)}
@@ -66,7 +65,7 @@ export default async function ContractsPage() {
             })}
             {contracts.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-6 text-center text-gray-400">
+                <td colSpan={5} className="px-4 py-6 text-center text-gray-400">
                   등록된 계약이 없습니다.
                 </td>
               </tr>

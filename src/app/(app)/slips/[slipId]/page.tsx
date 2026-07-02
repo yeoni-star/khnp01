@@ -18,7 +18,7 @@ export default async function SlipDetailPage({
   });
   if (!slip) notFound();
 
-  const activeContractItems = await listActiveContractItems(slip.restaurant, slip.vendorId, slip.deliveryDate);
+  const activeContractItems = await listActiveContractItems(slip.vendorId, slip.deliveryDate);
 
   return (
     <div className="space-y-6">

@@ -1,4 +1,6 @@
 import Link from "next/link";
+import RestaurantSwitcher from "./RestaurantSwitcher";
+import type { RestaurantCode } from "@/lib/restaurants";
 
 const NAV_ITEMS = [
   { href: "/", label: "홈" },
@@ -10,7 +12,7 @@ const NAV_ITEMS = [
   { href: "/required-quantity", label: "소요수량 산출" },
 ];
 
-export default function AppNav({ restaurantLabel }: { restaurantLabel: string }) {
+export default function AppNav({ restaurant }: { restaurant: RestaurantCode }) {
   return (
     <header className="border-b border-gray-200 bg-white print:hidden">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-3">
@@ -25,9 +27,7 @@ export default function AppNav({ restaurantLabel }: { restaurantLabel: string })
           </nav>
         </div>
         <div className="flex items-center gap-3 text-sm">
-          <span className="rounded-full bg-blue-50 px-3 py-1 font-medium text-blue-700">
-            {restaurantLabel}
-          </span>
+          <RestaurantSwitcher current={restaurant} />
           <form action="/logout" method="POST">
             <button type="submit" className="text-gray-500 hover:text-gray-800">
               로그아웃

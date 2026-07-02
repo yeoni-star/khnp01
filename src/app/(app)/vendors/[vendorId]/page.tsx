@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { db } from "@/lib/db";
-import { RESTAURANT_LABELS } from "@/lib/restaurants";
 import DeleteVendorButton from "@/components/vendors/DeleteVendorButton";
 import VendorEditForm from "@/components/vendors/VendorEditForm";
 
@@ -54,7 +53,6 @@ export default async function VendorDetailPage({
           <table className="w-full text-sm">
             <thead className="bg-gray-50 text-left text-xs font-medium text-gray-500">
               <tr>
-                <th className="px-4 py-2">식당</th>
                 <th className="px-4 py-2">계약기간</th>
                 <th className="px-4 py-2">품목 수</th>
                 <th className="px-4 py-2" />
@@ -63,7 +61,6 @@ export default async function VendorDetailPage({
             <tbody className="divide-y divide-gray-100">
               {vendor.contracts.map((c) => (
                 <tr key={c.id}>
-                  <td className="px-4 py-2">{RESTAURANT_LABELS[c.restaurant]}</td>
                   <td className="px-4 py-2 text-gray-600">
                     {c.startDate.toISOString().slice(0, 10)} ~ {c.endDate.toISOString().slice(0, 10)}
                   </td>
@@ -77,7 +74,7 @@ export default async function VendorDetailPage({
               ))}
               {vendor.contracts.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-4 py-6 text-center text-gray-400">
+                  <td colSpan={3} className="px-4 py-6 text-center text-gray-400">
                     등록된 계약이 없습니다.
                   </td>
                 </tr>
