@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import PrintButton from "./PrintButton";
 import { formatReportIssueDate, type VendorReport } from "@/lib/vendor-report";
 
@@ -15,6 +18,11 @@ export default function VendorReportTable({
   year: number;
   month: number;
   report: VendorReport;
+}) {
+  const [emptyRowCount, setEmptyRowCount] = useState(0);
+  const [reviewer1, setReviewer1] = useState("");
+  const [reviewer2, setReviewer2] = useState("");
+
   // 4주치 고정 양식을 위해 week와 date를 패딩
   const paddedWeeks = [...report.weeks];
   while (paddedWeeks.length < 4) {
@@ -37,6 +45,18 @@ export default function VendorReportTable({
       <div className="flex items-center justify-between print:hidden">
         <h1 className="text-lg font-semibold text-gray-900">납품보고서 - {vendorName}</h1>
         <div className="flex gap-2">
+          <button
+            onClick={() => setEmptyRowCount(emptyRowCount + 5)}
+            className="rounded border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            + 5칸 추가
+          </button>
+          <button
+            onClick={() => setEmptyRowCount(emptyRowCount + 10)}
+            className="rounded border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            + 10칸 추가
+          </button>
           <PrintButton />
           <a
             href={`/api/reports/vendor-export?vendorId=${vendorId}&year=${year}&month=${month}`}
@@ -47,9 +67,9 @@ export default function VendorReportTable({
         </div>
       </div>
 
-      <div className="rounded-md border border-gray-200 bg-white p-6">
+      <div className="mx-auto w-full max-w-[210mm] bg-white p-8 print:p-0">
         <div className="mb-4">
-          <h2 className="mb-6 text-center text-3xl font-bold tracking-widest text-gray-900 underline underline-offset-8">
+          <h2 className="mb-8 text-center text-4xl font-bold tracking-[0.3em] text-gray-900 underline underline-offset-8">
             납품보고서
           </h2>
           <div className="flex items-end justify-between">
@@ -65,21 +85,37 @@ export default function VendorReportTable({
             <table className="border-collapse text-center text-xs">
               <thead>
                 <tr>
-                  <th className="w-10 border border-gray-400 bg-gray-50 py-1 font-medium text-gray-700" rowSpan={3}>
+                  <th className="w-8 border border-gray-400 py-1 font-medium text-gray-700" rowSpan={3}>
                     결<br />
                     <br />
                     재
                   </th>
-                  <th className="w-20 border border-gray-400 bg-gray-50 py-1 font-medium text-gray-700">담당</th>
-                  <th className="w-20 border border-gray-400 bg-gray-50 py-1 font-medium text-gray-700">차장</th>
+                  <th className="w-24 border border-gray-400 py-1 font-medium text-gray-700">담당</th>
+                  <th className="w-24 border border-gray-400 py-1 font-medium text-gray-700">차장</th>
                 </tr>
                 <tr>
-                  <td className="h-12 border border-gray-400" />
-                  <td className="h-12 border border-gray-400" />
+                  <td className="h-16 border border-gray-400" />
+                  <td className="h-16 border border-gray-400" />
                 </tr>
                 <tr>
-                  <td className="border border-gray-400 py-1 bg-gray-50" />
-                  <td className="border border-gray-400 py-1 bg-gray-50" />
+                  <td className="border border-gray-400">
+                    <input
+                      type="text"
+                      className="w-full bg-transparent py-1 text-center text-xs outline-none"
+                      value={reviewer1}
+                      onChange={(e) => setReviewer1(e.target.value)}
+                      placeholder="이름 입력"
+                    />
+                  </td>
+                  <td className="border border-gray-400">
+                    <input
+                      type="text"
+                      className="w-full bg-transparent py-1 text-center text-xs outline-none"
+                      value={reviewer2}
+                      onChange={(e) => setReviewer2(e.target.value)}
+                      placeholder="이름 입력"
+                    />
+                  </td>
                 </tr>
               </thead>
             </table>
@@ -167,7 +203,7 @@ export default function VendorReportTable({
                   ))}
                 </tr>
               ))}
-              {report.items.length === 0 && (
+              {report.items.length === 0 && emptyRowCount === 0 && (
                 <tr>
                   <td
                     colSpan={6 + colSpanCount}
@@ -177,6 +213,19 @@ export default function VendorReportTable({
                   </td>
                 </tr>
               )}
+              {Array.from({ length: emptyRowCount }).map((_, i) => (
+                <tr key={`empty-${i}`}>
+                  <td className="border border-gray-400 px-1 py-4 text-center"></td>
+                  <td className="border border-gray-400 px-2 py-4"></td>
+                  <td className="border border-gray-400 px-1 py-4 text-center"></td>
+                  <td className="border border-gray-400 px-2 py-4 text-right"></td>
+                  <td className="border border-gray-400 px-2 py-4 text-right"></td>
+                  <td className="border border-gray-400 px-2 py-4 text-right"></td>
+                  {dateColumns.map((date) => (
+                    <td key={`empty-${i}-${date}`} className="border border-gray-400 px-1 py-4 text-center"></td>
+                  ))}
+                </tr>
+              ))}
             </tbody>
             {report.items.length > 0 && (
               <tfoot>
