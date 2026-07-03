@@ -12,6 +12,7 @@ describe("aggregateSummaryReport", () => {
       unitPrice: 46200,
       amount: 92400,
       taxAmount: 9240,
+      vendorName: "업체A",
     },
     {
       category: "PROCESSED" as const,
@@ -22,6 +23,7 @@ describe("aggregateSummaryReport", () => {
       unitPrice: 23100,
       amount: 23100,
       taxAmount: 2310,
+      vendorName: "업체A",
     },
     {
       category: "MEAT" as const,
@@ -32,6 +34,7 @@ describe("aggregateSummaryReport", () => {
       unitPrice: 12000,
       amount: 60000,
       taxAmount: 6000,
+      vendorName: "업체B",
     },
   ];
 
@@ -72,6 +75,7 @@ describe("aggregateSummaryReport", () => {
         unitPrice: 2000,
         amount: 40000,
         taxAmount: null,
+        vendorName: "업체C",
       },
     ];
     const report = aggregateSummaryReport(mixedRows);
@@ -94,6 +98,7 @@ describe("aggregateSummaryReport", () => {
         unitPrice: 2000,
         amount: 20000,
         taxAmount: 2000,
+        vendorName: "업체A",
       },
       {
         category: "GRAIN" as const,
@@ -104,6 +109,7 @@ describe("aggregateSummaryReport", () => {
         unitPrice: 2200,
         amount: 22000,
         taxAmount: 2200,
+        vendorName: "업체A",
       },
     ];
     const report = aggregateSummaryReport(mixedRows);

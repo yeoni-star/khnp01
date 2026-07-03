@@ -58,49 +58,86 @@ export default function SummaryReportTable({
         </div>
 
         {report.taxSections.map((taxSection) => (
-          <div key={taxSection.taxType} className="mb-4">
-            <p className="mb-1 text-sm font-semibold text-gray-900">{TAX_TYPE_LABELS[taxSection.taxType]}</p>
-            <table className="w-full border-collapse text-sm">
-              <thead>
-                <tr className="bg-gray-50">
-                  <th className="border border-gray-300 px-2 py-1">카테고리</th>
-                  <th className="border border-gray-300 px-2 py-1">공급가액</th>
-                  {taxSection.taxType === "TAXABLE" && <th className="border border-gray-300 px-2 py-1">세액</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {taxSection.categories.map((section) => (
-                  <tr key={section.category}>
-                    <td className="border border-gray-300 px-2 py-1 font-medium">
-                      {CATEGORY_LABELS[section.category]}
-                    </td>
-                    <td className="border border-gray-300 px-2 py-1 text-right">
-                      {section.subtotal.toLocaleString()}
-                    </td>
-                    {taxSection.taxType === "TAXABLE" && (
-                      <td className="border border-gray-300 px-2 py-1 text-right">
-                        {section.items.reduce((sum, i) => sum + i.totalTaxAmount, 0).toLocaleString()}
+          <div key={taxSection.taxType} className="mb-6">
+            <p className="mb-2 text-sm font-semibold text-gray-900">
+              {TAX_TYPE_LABELS[taxSection.taxType]}
+            </p>
+
+            {taxSection.categories.map((section) => (
+              <div key={section.category} className="mb-4">
+                <p className="mb-1 rounded bg-gray-100 px-2 py-0.5 text-xs font-bold text-gray-700">
+                  {CATEGORY_LABELS[section.category]}
+                </p>
+                <table className="w-full border-collapse text-sm">
+                  <thead>
+                    <tr className="bg-gray-50">
+                      <th className="border border-gray-300 px-2 py-1 text-left">품명</th>
+                      <th className="border border-gray-300 px-2 py-1">단위</th>
+                      <th className="border border-gray-300 px-2 py-1 text-left">업체명</th>
+                      <th className="border border-gray-300 px-2 py-1 text-right">수량</th>
+                      <th className="border border-gray-300 px-2 py-1 text-right">공급가액</th>
+                      {taxSection.taxType === "TAXABLE" && (
+                        <th className="border border-gray-300 px-2 py-1 text-right">세액</th>
+                      )}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {section.items.map((item, idx) => (
+                      <tr key={idx} className="hover:bg-gray-50">
+                        <td className="border border-gray-300 px-2 py-1">{item.itemName}</td>
+                        <td className="border border-gray-300 px-2 py-1 text-center">{item.unit}</td>
+                        <td className="border border-gray-300 px-2 py-1 text-gray-600">
+                          {item.vendorName || <span className="text-gray-300">-</span>}
+                        </td>
+                        <td className="border border-gray-300 px-2 py-1 text-right">
+                          {item.totalQuantity.toLocaleString()}
+                        </td>
+                        <td className="border border-gray-300 px-2 py-1 text-right">
+                          {item.totalAmount.toLocaleString()}
+                        </td>
+                        {taxSection.taxType === "TAXABLE" && (
+                          <td className="border border-gray-300 px-2 py-1 text-right">
+                            {item.totalTaxAmount.toLocaleString()}
+                          </td>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr>
+                      <td
+                        colSpan={taxSection.taxType === "TAXABLE" ? 4 : 4}
+                        className="border-t-2 border-gray-600 px-2 py-1 text-right font-bold text-gray-700"
+                      >
+                        {CATEGORY_LABELS[section.category]} 소계
                       </td>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr>
-                  <td className="border-t-2 border-gray-800 px-2 py-1 text-right font-bold">
-                    {TAX_TYPE_LABELS[taxSection.taxType]} 소계
-                  </td>
-                  <td className="border-t-2 border-gray-800 px-2 py-1 text-right font-bold">
-                    {taxSection.supplySubtotal.toLocaleString()}
-                  </td>
-                  {taxSection.taxType === "TAXABLE" && (
-                    <td className="border-t-2 border-gray-800 px-2 py-1 text-right font-bold">
-                      {taxSection.taxSubtotal.toLocaleString()}
-                    </td>
-                  )}
-                </tr>
-              </tfoot>
-            </table>
+                      <td className="border-t-2 border-gray-600 px-2 py-1 text-right font-bold">
+                        {section.subtotal.toLocaleString()}
+                      </td>
+                      {taxSection.taxType === "TAXABLE" && (
+                        <td className="border-t-2 border-gray-600 px-2 py-1 text-right font-bold">
+                          {section.items.reduce((sum, i) => sum + i.totalTaxAmount, 0).toLocaleString()}
+                        </td>
+                      )}
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            ))}
+
+            {/* 과세/면세 소계 */}
+            <div className="mt-1 flex justify-end">
+              <p className="text-sm font-semibold text-gray-800">
+                {TAX_TYPE_LABELS[taxSection.taxType]} 공급가액 소계:{" "}
+                <span className="font-bold">{taxSection.supplySubtotal.toLocaleString()}원</span>
+                {taxSection.taxType === "TAXABLE" && (
+                  <>
+                    {" "}· 세액 소계:{" "}
+                    <span className="font-bold">{taxSection.taxSubtotal.toLocaleString()}원</span>
+                  </>
+                )}
+              </p>
+            </div>
           </div>
         ))}
 
@@ -109,10 +146,13 @@ export default function SummaryReportTable({
         )}
 
         {report.taxSections.length > 0 && (
-          <p className="text-right text-sm font-medium text-gray-900">
-            공급가액 합계: {(report.taxableSupplyTotal + report.exemptSupplyTotal).toLocaleString()}원 · 세액 합계:{" "}
-            {report.taxableTaxTotal.toLocaleString()}원 · 총 합계: {report.grandTotal.toLocaleString()}원
-          </p>
+          <div className="mt-4 border-t-2 border-gray-800 pt-3 text-right">
+            <p className="text-sm font-bold text-gray-900">
+              공급가액 합계: {(report.taxableSupplyTotal + report.exemptSupplyTotal).toLocaleString()}원
+              &nbsp;·&nbsp; 세액 합계: {report.taxableTaxTotal.toLocaleString()}원
+              &nbsp;·&nbsp; 총 합계: {report.grandTotal.toLocaleString()}원
+            </p>
+          </div>
         )}
       </div>
     </div>

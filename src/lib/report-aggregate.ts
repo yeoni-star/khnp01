@@ -11,6 +11,7 @@ export type SummaryItemRow = {
   totalAmount: number;
   totalTaxAmount: number;
   priceVaries: boolean;
+  vendorName: string;
 };
 
 export type SummaryCategorySection = {
@@ -43,6 +44,7 @@ export type SummaryInputRow = {
   unitPrice: number;
   amount: number;
   taxAmount: number | null;
+  vendorName: string;
 };
 
 /** 순수 집계 함수: 전체 통합 요약(문서B) - 과세/면세 > 카테고리(고정 순서) > 품목별 합계, 소계, 합계 */
@@ -54,6 +56,7 @@ export function aggregateSummaryReport(rows: SummaryInputRow[]): SummaryReport {
       category: CategoryCode;
       itemName: string;
       unit: string;
+      vendorName: string;
       totalQuantity: number;
       totalAmount: number;
       totalTaxAmount: number;
@@ -62,7 +65,7 @@ export function aggregateSummaryReport(rows: SummaryInputRow[]): SummaryReport {
   >();
 
   for (const row of rows) {
-    const key = `${row.taxType}__${row.category}__${row.itemName.trim().toLowerCase()}__${row.unit.trim().toLowerCase()}`;
+    const key = `${row.taxType}__${row.category}__${row.itemName.trim().toLowerCase()}__${row.unit.trim().toLowerCase()}__${row.vendorName.trim().toLowerCase()}`;
     const entry =
       grouped.get(key) ??
       {
@@ -70,6 +73,7 @@ export function aggregateSummaryReport(rows: SummaryInputRow[]): SummaryReport {
         category: row.category,
         itemName: row.itemName,
         unit: row.unit,
+        vendorName: row.vendorName,
         totalQuantity: 0,
         totalAmount: 0,
         totalTaxAmount: 0,
@@ -92,6 +96,7 @@ export function aggregateSummaryReport(rows: SummaryInputRow[]): SummaryReport {
           .map((entry) => ({
             itemName: entry.itemName,
             unit: entry.unit,
+            vendorName: entry.vendorName,
             totalQuantity: entry.totalQuantity,
             unitPrice: entry.totalQuantity > 0 ? Math.round(entry.totalAmount / entry.totalQuantity) : 0,
             totalAmount: entry.totalAmount,
@@ -137,7 +142,7 @@ export async function buildSummaryReport(
         deliveryDate: { gte: monthStart, lte: monthEnd },
       },
     },
-    include: { slip: true },
+    include: { slip: { include: { vendor: true } } },
   });
 
   const rows: SummaryInputRow[] = items
@@ -151,6 +156,7 @@ export async function buildSummaryReport(
       unitPrice: item.unitPrice,
       amount: item.amount,
       taxAmount: item.taxAmount,
+      vendorName: item.slip.vendor?.name ?? "",
     }));
 
   return aggregateSummaryReport(rows);
