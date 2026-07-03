@@ -166,6 +166,7 @@ export default function SlipItemsTable({
   
   const [searchQuery, setSearchQuery] = useState("");
   const [activeRowKey, setActiveRowKey] = useState<string | null>(null);
+  const [itemTypeFilter, setItemTypeFilter] = useState<"ALL" | "CONTRACT" | "UNREGISTERED">("ALL");
 
   const searchPool = useMemo(() => {
     const contractOptions = contractItems.map((item) => ({
@@ -421,12 +422,19 @@ export default function SlipItemsTable({
   });
 
   const filteredSearchItems = useMemo(() => {
+    let pool = searchPool;
+    if (itemTypeFilter === "CONTRACT") {
+      pool = searchPool.filter((item) => item.source === "계약단가");
+    } else if (itemTypeFilter === "UNREGISTERED") {
+      pool = searchPool.filter((item) => item.source === "미등록");
+    }
+
     if (!searchQuery.trim()) {
-      return searchPool.slice(0, 20);
+      return pool.slice(0, 30);
     }
     const q = searchQuery.toLowerCase();
-    return searchPool.filter((item) => item.name.toLowerCase().includes(q)).slice(0, 30);
-  }, [searchPool, searchQuery]);
+    return pool.filter((item) => item.name.toLowerCase().includes(q)).slice(0, 30);
+  }, [searchPool, searchQuery, itemTypeFilter]);
 
   return (
     <div className="grid grid-cols-4 gap-4">
@@ -704,6 +712,37 @@ export default function SlipItemsTable({
                 ? "확정된 명세표는 수정 불가합니다. (단가 및 규격 조회용)"
                 : "입력하려는 품명 칸을 먼저 마우스로 클릭(포커싱)한 뒤, 아래 검색 결과에서 품목을 클릭하면 자동 입력됩니다."}
             </p>
+          </div>
+
+          {/* 구분 필터 탭 */}
+          <div className="mb-2 flex gap-1 rounded bg-gray-100 p-0.5 text-[11px] font-semibold text-gray-500">
+            <button
+              type="button"
+              onClick={() => setItemTypeFilter("ALL")}
+              className={`flex-1 rounded py-1 text-center transition cursor-pointer ${
+                itemTypeFilter === "ALL" ? "bg-white text-gray-900 shadow-xs" : "hover:text-gray-900"
+              }`}
+            >
+              전체 ({searchPool.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setItemTypeFilter("CONTRACT")}
+              className={`flex-1 rounded py-1 text-center transition cursor-pointer ${
+                itemTypeFilter === "CONTRACT" ? "bg-white text-gray-900 shadow-xs" : "hover:text-gray-900"
+              }`}
+            >
+              계약품목 ({searchPool.filter(i => i.source === "계약단가").length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setItemTypeFilter("UNREGISTERED")}
+              className={`flex-1 rounded py-1 text-center transition cursor-pointer ${
+                itemTypeFilter === "UNREGISTERED" ? "bg-white text-gray-900 shadow-xs" : "hover:text-gray-900"
+              }`}
+            >
+              미등록 ({searchPool.filter(i => i.source === "미등록").length})
+            </button>
           </div>
 
           <div className="mb-3">
