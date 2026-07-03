@@ -193,7 +193,13 @@ model MealCompany {
   @@index([name])
 }
 
-/** 공개 제출 폼(/meal-register)을 통해 접수되는 식사 등록 기록. submittedAt은 서버에서 기록하는 실제 제출 시각. */
+enum MealType {
+  LUNCH
+  DINNER
+}
+
+/** 공개 제출 폼(/meal-register)을 통해 접수되는 식사 등록 기록. submittedAt은 서버에서 기록하는 실제 제출 시각.
+ * mealType은 제출 시각(중식 11:00~13:30 / 석식 17:00~19:30)을 기준으로 서버가 자동 판정한다. */
 model MealRegistration {
   id            String      @id @default(cuid())
   restaurant    Restaurant
@@ -201,6 +207,7 @@ model MealRegistration {
   company       MealCompany @relation(fields: [companyId], references: [id], onDelete: Restrict)
   submitterName String
   phone         String
+  mealType      MealType
   mealDate      DateTime
   submittedAt   DateTime    @default(now())
 

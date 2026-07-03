@@ -10,19 +10,29 @@ export default function ExportButton({ url }: { url: string }) {
       setLoading(true);
       const response = await fetch(url);
       if (!response.ok) throw new Error("다운로드 실패");
-      
+
       const blob = await response.blob();
-      const downloadUrl = window.URL.createObjectURL(blob);
+      // MIME 타입을 명시적으로 xlsx로 지정하여 브라우저가 올바른 확장자로 저장하도록 보장
+      const xlsxBlob = new Blob([blob], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      const downloadUrl = window.URL.createObjectURL(xlsxBlob);
       const a = document.createElement("a");
       a.href = downloadUrl;
-      
-      const contentDisposition = response.headers.get("Content-Disposition");
+
+      // URL 파라미터에서 날짜 범위를 추출해 파일명 구성 (헤더 파싱 불필요)
       let filename = "meal_settlement.xlsx";
-      if (contentDisposition && contentDisposition.includes("filename=")) {
-        const match = contentDisposition.match(/filename="(.+)"/);
-        if (match && match[1]) filename = match[1];
+      try {
+        const urlObj = new URL(url, window.location.origin);
+        const start = urlObj.searchParams.get("start");
+        const end = urlObj.searchParams.get("end");
+        if (start && end) {
+          filename = `meal_settlement_${start}_${end}.xlsx`;
+        }
+      } catch {
+        // URL 파싱 실패 시 기본 파일명 사용
       }
-      
+
       a.download = filename;
       document.body.appendChild(a);
       a.click();
@@ -46,3 +56,4 @@ export default function ExportButton({ url }: { url: string }) {
     </button>
   );
 }
+

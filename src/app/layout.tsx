@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "납품보고서 관리",
-  description: "식자재 거래명세표 및 월별 납품보고서 관리 시스템",
+  title: "고리 구내식당 관리 시스템",
+  description: "고리 구내식당 식재료 및 식수 관리 시스템",
 };
 
 export default function RootLayout({

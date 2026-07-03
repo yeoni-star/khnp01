@@ -18,7 +18,7 @@ export default function AppNav({ restaurant }: { restaurant: RestaurantCode }) {
     <header className="border-b border-gray-200 bg-white print:hidden">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-3">
         <div className="flex flex-wrap items-center gap-4">
-          <span className="text-sm font-semibold text-gray-900">납품보고서 관리</span>
+          <span className="text-sm font-semibold text-gray-900">고리 구내식당 관리</span>
           <nav className="flex flex-wrap gap-3 text-sm text-gray-600">
             {NAV_ITEMS.map((item) => (
               <Link key={item.href} href={item.href} className="hover:text-primary-600">
