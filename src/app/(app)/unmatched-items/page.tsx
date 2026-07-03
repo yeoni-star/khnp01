@@ -5,11 +5,18 @@ import DateFilter from "./DateFilter";
 import ExportCsvButton from "./ExportCsvButton";
 
 export default async function UnmatchedItemsPage(props: {
-  searchParams: Promise<{ startDate?: string; endDate?: string }>;
+  searchParams: Promise<{ startDate?: string; endDate?: string; restaurant?: string }>;
 }) {
   const session = await getSession();
   const searchParams = await props.searchParams;
-  const restaurantLabel = session?.restaurant === "A" ? "본관" : "후문";
+  
+  const restaurantFilter =
+    searchParams.restaurant === "A" || searchParams.restaurant === "B"
+      ? searchParams.restaurant
+      : undefined;
+
+  const restaurantLabel =
+    searchParams.restaurant === "A" ? "본관" : searchParams.restaurant === "B" ? "후문" : "전체";
 
   const dateFilter: { gte?: Date; lte?: Date } = {};
   if (searchParams.startDate) {
@@ -23,7 +30,7 @@ export default async function UnmatchedItemsPage(props: {
     where: {
       matchType: "NONE",
       slip: {
-        restaurant: session!.restaurant,
+        ...(restaurantFilter ? { restaurant: restaurantFilter } : {}),
         ...(Object.keys(dateFilter).length > 0 ? { deliveryDate: dateFilter } : {}),
       },
     },
@@ -45,9 +52,10 @@ export default async function UnmatchedItemsPage(props: {
     );
 
     const categoryCode = activeContract?.category ?? item.category;
+    const itemRestaurantLabel = item.slip.restaurant === "A" ? "본관" : "후문";
 
     return {
-      식당: restaurantLabel,
+      식당: itemRestaurantLabel,
       납품일자: item.slip.deliveryDate.toISOString().slice(0, 10),
       품명: item.itemName,
       카테고리: categoryCode ? CATEGORY_LABELS[categoryCode] : "-",
@@ -74,6 +82,7 @@ export default async function UnmatchedItemsPage(props: {
         <table className="w-full text-sm">
           <thead className="bg-gray-50 text-left text-xs font-medium text-gray-500">
             <tr>
+              <th className="px-4 py-2">식당</th>
               <th className="px-4 py-2">납품일자</th>
               <th className="px-4 py-2">품명</th>
               <th className="px-4 py-2">카테고리</th>
@@ -84,6 +93,7 @@ export default async function UnmatchedItemsPage(props: {
           <tbody className="divide-y divide-gray-100">
             {rows.map((row, index) => (
               <tr key={index}>
+                <td className="px-4 py-2 text-gray-900">{row.식당}</td>
                 <td className="px-4 py-2 text-gray-900">{row.납품일자}</td>
                 <td className="px-4 py-2 font-medium text-gray-900">{row.품명}</td>
                 <td className="px-4 py-2 text-gray-600">{row.카테고리}</td>
@@ -93,8 +103,8 @@ export default async function UnmatchedItemsPage(props: {
             ))}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-6 text-center text-gray-400">
-                  해당 기간에 미등록 품목이 없습니다.
+                <td colSpan={6} className="px-4 py-6 text-center text-gray-400">
+                  해당 조건에 미등록 품목이 없습니다.
                 </td>
               </tr>
             )}

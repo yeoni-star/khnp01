@@ -9,6 +9,7 @@ export default function DateFilter() {
 
   const [startDate, setStartDate] = useState(searchParams.get("startDate") || "");
   const [endDate, setEndDate] = useState(searchParams.get("endDate") || "");
+  const [restaurant, setRestaurant] = useState(searchParams.get("restaurant") || "all");
 
   const handleFilter = () => {
     const params = new URLSearchParams(searchParams);
@@ -16,17 +17,37 @@ export default function DateFilter() {
     else params.delete("startDate");
     if (endDate) params.set("endDate", endDate);
     else params.delete("endDate");
+    if (restaurant && restaurant !== "all") params.set("restaurant", restaurant);
+    else params.delete("restaurant");
+    router.push(`?${params.toString()}`);
+  };
+
+  const handleRestaurantChange = (value: string) => {
+    setRestaurant(value);
+    const params = new URLSearchParams(searchParams);
+    if (value && value !== "all") params.set("restaurant", value);
+    else params.delete("restaurant");
     router.push(`?${params.toString()}`);
   };
 
   const handleReset = () => {
     setStartDate("");
     setEndDate("");
+    setRestaurant("all");
     router.push("?");
   };
 
   return (
     <div className="flex items-center gap-2">
+      <select
+        value={restaurant}
+        onChange={(e) => handleRestaurantChange(e.target.value)}
+        className="rounded border border-gray-300 px-2 py-1 text-xs bg-white text-gray-700 font-medium"
+      >
+        <option value="all">식당 전체</option>
+        <option value="A">본관</option>
+        <option value="B">후문</option>
+      </select>
       <input
         type="date"
         value={startDate}
@@ -42,14 +63,14 @@ export default function DateFilter() {
       />
       <button
         onClick={handleFilter}
-        className="rounded border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+        className="rounded border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 cursor-pointer"
       >
         조회
       </button>
-      {(startDate || endDate) && (
+      {(startDate || endDate || restaurant !== "all") && (
         <button
           onClick={handleReset}
-          className="rounded text-xs text-gray-500 hover:underline"
+          className="rounded text-xs text-gray-500 hover:underline cursor-pointer"
         >
           초기화
         </button>
