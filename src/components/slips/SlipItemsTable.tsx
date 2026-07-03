@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { saveSlipDraft, confirmSlip } from "@/actions/slip-actions";
 import type { CategoryCode } from "@/lib/categories";
@@ -153,6 +153,8 @@ export default function SlipItemsTable({
   const [pending, startTransition] = useTransition();
   const [importPending, setImportPending] = useState(false);
   const [importNote, setImportNote] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
   const readOnly = status === "CONFIRMED";
 
   function updateRow(key: string, patch: Partial<Row>) {
@@ -160,6 +162,7 @@ export default function SlipItemsTable({
   }
 
   async function handleExcelUpload(file: File) {
+    setSelectedFileName(file.name);
     setImportPending(true);
     setImportNote(null);
     setMessage(null);
@@ -338,30 +341,54 @@ export default function SlipItemsTable({
   return (
     <div className="space-y-4">
       {!readOnly && (
-        <div className="rounded-md border border-gray-200 bg-white p-4">
-          <div className="flex items-center justify-between">
-            <label className="block text-xs font-medium text-gray-600">엑셀 업로드 (.xlsx)</label>
+        <div className="rounded-md border border-gray-200 bg-white p-4 shadow-sm">
+          <div className="flex items-center justify-between border-b pb-2 mb-3">
+            <span className="text-xs font-bold text-gray-700">엑셀 업로드 (.xlsx)</span>
             <div className="flex gap-3 text-xs">
               <a href="/api/templates/slip-excel?taxType=TAXABLE" className="text-primary-600 hover:underline">
                 과세 양식 다운로드
               </a>
+              <span className="text-gray-300">|</span>
               <a href="/api/templates/slip-excel?taxType=EXEMPT" className="text-primary-600 hover:underline">
                 면세 양식 다운로드
               </a>
             </div>
           </div>
-          <input
-            type="file"
-            accept=".xlsx"
-            disabled={importPending}
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) void handleExcelUpload(file);
-              e.target.value = "";
-            }}
-            className="mt-1 block text-sm"
-          />
-          {importPending && <p className="mt-1 text-xs text-gray-500">불러오는 중입니다...</p>}
+          
+          <div className="flex items-center gap-3">
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept=".xlsx"
+              disabled={importPending}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  void handleExcelUpload(file);
+                }
+                e.target.value = "";
+              }}
+              className="hidden"
+            />
+            <button
+              type="button"
+              disabled={importPending}
+              onClick={() => fileInputRef.current?.click()}
+              className="flex items-center gap-1.5 rounded bg-primary-600 px-3.5 py-2 text-xs font-semibold text-white shadow-sm hover:bg-primary-700 disabled:opacity-50 transition cursor-pointer"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+              </svg>
+              엑셀 파일 선택
+            </button>
+            <span className="text-xs text-gray-500">
+              {importPending
+                ? "불러오는 중..."
+                : selectedFileName
+                ? `선택됨: ${selectedFileName}`
+                : "선택된 파일 없음"}
+            </span>
+          </div>
           {importNote && <p className="mt-1 text-xs text-gray-500">{importNote}</p>}
         </div>
       )}

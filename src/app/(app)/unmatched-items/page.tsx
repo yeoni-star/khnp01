@@ -9,6 +9,7 @@ export default async function UnmatchedItemsPage(props: {
 }) {
   const session = await getSession();
   const searchParams = await props.searchParams;
+  const restaurantLabel = session?.restaurant === "A" ? "본관" : "후문";
 
   const dateFilter: { gte?: Date; lte?: Date } = {};
   if (searchParams.startDate) {
@@ -46,6 +47,7 @@ export default async function UnmatchedItemsPage(props: {
     const categoryCode = activeContract?.category ?? item.category;
 
     return {
+      식당: restaurantLabel,
       납품일자: item.slip.deliveryDate.toISOString().slice(0, 10),
       품명: item.itemName,
       카테고리: categoryCode ? CATEGORY_LABELS[categoryCode] : "-",
@@ -65,7 +67,7 @@ export default async function UnmatchedItemsPage(props: {
 
       <div className="flex items-center justify-between">
         <DateFilter />
-        <ExportCsvButton data={rows} filename={`미등록품목_${new Date().toISOString().slice(0, 10)}.csv`} />
+        <ExportCsvButton data={rows} filename={`미등록품목_${restaurantLabel}_${new Date().toISOString().slice(0, 10)}.csv`} />
       </div>
 
       <div className="overflow-hidden rounded-md border border-gray-200 bg-white">
