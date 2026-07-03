@@ -39,9 +39,23 @@ export async function buildQuantityReport(
   endDate: Date,
   filters?: { vendorId?: string; category?: CategoryCode }
 ): Promise<QuantityRow[]> {
+  // 계약 단가표의 카테고리 맵핑 딕셔너리 구축
+  const contractItems = await db.contractItem.findMany({
+    select: {
+      itemName: true,
+      unit: true,
+      category: true,
+    },
+  });
+
+  const contractCategoryMap = new Map<string, CategoryCode>();
+  for (const ci of contractItems) {
+    const key = `${ci.itemName.trim().toLowerCase()}__${ci.unit.trim().toLowerCase()}`;
+    contractCategoryMap.set(key, ci.category as CategoryCode);
+  }
+
   const items = await db.deliverySlipItem.findMany({
     where: {
-      category: filters?.category,
       slip: {
         restaurant,
         status: "CONFIRMED",
@@ -51,12 +65,21 @@ export async function buildQuantityReport(
     },
   });
 
-  const rows: QuantityInputRow[] = items.map((item) => ({
-    itemName: item.itemName,
-    category: item.category,
-    unit: item.unit,
-    quantity: item.quantity,
-  }));
+  let rows: QuantityInputRow[] = items.map((item) => {
+    const key = `${item.itemName.trim().toLowerCase()}__${item.unit.trim().toLowerCase()}`;
+    const category = contractCategoryMap.get(key) ?? (item.category as CategoryCode | null);
+
+    return {
+      itemName: item.itemName,
+      category,
+      unit: item.unit,
+      quantity: item.quantity,
+    };
+  });
+
+  if (filters?.category) {
+    rows = rows.filter((r) => r.category === filters.category);
+  }
 
   return aggregateQuantity(rows);
 }
