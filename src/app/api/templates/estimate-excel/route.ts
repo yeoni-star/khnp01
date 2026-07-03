@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 import { requireSession } from "@/lib/session";
 import { isTaxTypeCode } from "@/lib/tax";
 import { buildQuantityReport } from "@/lib/quantity-aggregate";
-import { type CategoryCode } from "@/lib/categories";
+import { type CategoryCode, CATEGORY_LABELS, isCategoryCode } from "@/lib/categories";
 import { type RestaurantCode } from "@/lib/restaurants";
 import ExcelJS from "exceljs";
 
@@ -48,9 +48,11 @@ export async function GET(request: NextRequest) {
 
     const colsCount = taxType === "TAXABLE" ? 7 : 5;
 
-    // 2.1 대제목
+    // 2.1 대제목 (카테고리 선택 시 카테고리명 접두)
+    const categoryLabel = category && isCategoryCode(category) ? CATEGORY_LABELS[category] : "";
+    const titlePrefix = categoryLabel ? `${categoryLabel} ` : "";
     const titleCell = sheet.getCell(1, 1);
-    titleCell.value = `견적서 및 소요단가표 (${taxType === "TAXABLE" ? "과세" : "면세"})`;
+    titleCell.value = `${titlePrefix}견적서 및 소요단가표 (${taxType === "TAXABLE" ? "과세" : "면세"})`;
     titleCell.font = { bold: true, size: 15, color: { argb: "FF111827" } };
     titleCell.alignment = { horizontal: "center", vertical: "middle" };
     sheet.getRow(1).height = 40;
@@ -85,22 +87,35 @@ export async function GET(request: NextRequest) {
     sheet.getCell(4, 2).value = "";
     sheet.getCell(4, 2).border = { top: THIN, left: THIN, bottom: THIN, right: THIN };
 
-    // [C3:D4] 직인란 구성 (높이를 3~4행으로 맞춤)
-    sheet.mergeCells(3, 3, 4, 3);
+    // [A5] 견적일 라벨
+    sheet.getCell(5, 1).value = "견 적 일";
+    sheet.getCell(5, 1).font = { bold: true, size: 9 };
+    sheet.getCell(5, 1).alignment = { horizontal: "center", vertical: "middle" };
+    sheet.getCell(5, 1).fill = HEADER_FILL;
+    sheet.getCell(5, 1).border = { top: THIN, left: THIN, bottom: THIN, right: THIN };
+
+    // [B5] 견적일 기입란 (오늘 날짜를 기본값으로)
+    const today = new Date().toISOString().slice(0, 10);
+    sheet.getCell(5, 2).value = today;
+    sheet.getCell(5, 2).alignment = { horizontal: "left", vertical: "middle" };
+    sheet.getCell(5, 2).border = { top: THIN, left: THIN, bottom: THIN, right: THIN };
+
+    // [C3:D5] 직인란 구성 (3~5행)
+    sheet.mergeCells(3, 3, 5, 3);
     const signLabelCell = sheet.getCell(3, 3);
     signLabelCell.value = "대표자\n(직인)";
     signLabelCell.font = { bold: true, size: 9 };
     signLabelCell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
     signLabelCell.fill = HEADER_FILL;
 
-    sheet.mergeCells(3, 4, 4, 4);
+    sheet.mergeCells(3, 4, 5, 4);
     const signBoxCell = sheet.getCell(3, 4);
     signBoxCell.value = "(인)";
     signBoxCell.font = { color: { argb: "FF9CA3AF" }, size: 12 };
     signBoxCell.alignment = { horizontal: "center", vertical: "middle" };
     signBoxCell.fill = BOX_FILL;
 
-    for (let r = 3; r <= 4; r++) {
+    for (let r = 3; r <= 5; r++) {
       for (let c = 3; c <= 4; c++) {
         sheet.getCell(r, c).border = { top: THIN, left: THIN, bottom: THIN, right: THIN };
       }
@@ -108,13 +123,14 @@ export async function GET(request: NextRequest) {
 
     sheet.getRow(3).height = 20;
     sheet.getRow(4).height = 20;
+    sheet.getRow(5).height = 20;
 
-    // 2.4 데이터 테이블 시작 (6행 헤더, 7행 데이터 시작)
+    // 2.4 데이터 테이블 시작 (7행 헤더, 8행 데이터 시작)
     const headers = taxType === "TAXABLE"
       ? ["번호", "품명", "규격", "소요수량", "공급가액", "세액", "합계금액"]
       : ["번호", "품명", "규격", "소요수량", "공급가액(합계)"];
 
-    const headerRow = 6;
+    const headerRow = 7;
     headers.forEach((label, i) => {
       const cell = sheet.getCell(headerRow, i + 1);
       cell.value = label;
@@ -125,8 +141,8 @@ export async function GET(request: NextRequest) {
     });
     sheet.getRow(headerRow).height = 26;
 
-    // 2.5 데이터 행 채우기 (7행부터)
-    const dataStartRow = 7;
+    // 2.5 데이터 행 채우기 (8행부터)
+    const dataStartRow = 8;
     rows.forEach((row, index) => {
       const r = dataStartRow + index;
       sheet.getRow(r).height = 20;
