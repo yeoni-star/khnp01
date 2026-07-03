@@ -34,7 +34,7 @@ export function aggregateQuantity(rows: QuantityInputRow[]): QuantityRow[] {
 }
 
 export async function buildQuantityReport(
-  restaurant: RestaurantCode,
+  restaurant: RestaurantCode | "ALL",
   startDate: Date,
   endDate: Date,
   filters?: { vendorId?: string; category?: CategoryCode }
@@ -57,7 +57,7 @@ export async function buildQuantityReport(
   const items = await db.deliverySlipItem.findMany({
     where: {
       slip: {
-        restaurant,
+        ...(restaurant !== "ALL" ? { restaurant } : {}),
         status: "CONFIRMED",
         deliveryDate: { gte: startDate, lte: endDate },
         ...(filters?.vendorId ? { vendorId: filters.vendorId } : {}),

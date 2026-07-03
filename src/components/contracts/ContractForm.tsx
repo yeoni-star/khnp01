@@ -66,6 +66,8 @@ export default function ContractForm({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [zoom, setZoom] = useState(1);
   const [isPinned, setIsPinned] = useState(false);
+  const excelInputRef = useRef<HTMLInputElement>(null);
+  const [excelPending, setExcelPending] = useState(false);
 
   const boundAction = isEdit
     ? (formData: FormData) => updateContract(contract!.id, formData)
@@ -140,6 +142,40 @@ export default function ContractForm({
       setOcrMessage({ type: "error", text: "이미지 인식 중 오류가 발생했습니다." });
     } finally {
       setOcrPending(false);
+    }
+  }
+
+  async function handleExcelUpload(file: File) {
+    setExcelPending(true);
+    setOcrMessage(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/contracts/import-excel", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        setOcrMessage({ type: "error", text: data.message || "엑셀 업로드에 실패했습니다." });
+        return;
+      }
+
+      if (data.items && data.items.length > 0) {
+        setItems(
+          data.items.map((item: any) => ({
+            itemName: item.itemName,
+            unit: item.unit,
+            unitPrice: String(item.unitPrice),
+          }))
+        );
+        setOcrMessage({ type: "success", text: `엑셀에서 ${data.items.length}개 품목 단가를 가져왔습니다.` });
+      }
+    } catch (error) {
+      console.error("Excel import error", error);
+      setOcrMessage({ type: "error", text: "엑셀 파싱 중 네트워크 오류가 발생했습니다." });
+    } finally {
+      setExcelPending(false);
     }
   }
 
@@ -253,11 +289,47 @@ export default function ContractForm({
       </div>
 
       <div className="rounded-md border border-gray-200 bg-white p-4">
-        <div className="mb-3 flex flex-col items-start justify-between gap-2 sm:flex-row sm:items-center">
-          <h2 className="text-sm font-semibold text-gray-900">단가표</h2>
-          <div className="flex items-center gap-2">
-            <label className="cursor-pointer rounded border border-gray-300 bg-gray-50 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-100">
-              {ocrPending ? "인식 중..." : "이미지로 채우기"}
+        <div className="mb-4 flex flex-col gap-3 border-b pb-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-sm font-bold text-gray-900">단가표</h2>
+            <div className="mt-1 flex flex-wrap gap-2 text-[11px] text-gray-500">
+              <span>양식 다운로드:</span>
+              <a
+                href="/api/templates/contract-excel?taxType=TAXABLE"
+                className="text-primary-600 hover:underline font-semibold"
+              >
+                📄 과세 양식
+              </a>
+              <span className="text-gray-300">|</span>
+              <a
+                href="/api/templates/contract-excel?taxType=EXEMPT"
+                className="text-primary-600 hover:underline font-semibold"
+              >
+                📄 면세 양식
+              </a>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {/* 엑셀 업로드 버튼 */}
+            <label className="cursor-pointer rounded bg-primary-50 border border-primary-200 px-3 py-1.5 text-xs font-bold text-primary-700 hover:bg-primary-100 transition">
+              {excelPending ? "가져오는 중..." : "📁 엑셀 업로드"}
+              <input
+                ref={excelInputRef}
+                type="file"
+                accept=".xlsx"
+                className="hidden"
+                disabled={excelPending}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) void handleExcelUpload(file);
+                  e.target.value = "";
+                }}
+              />
+            </label>
+
+            {/* 이미지로 채우기 버튼 */}
+            <label className="cursor-pointer rounded border border-gray-300 bg-gray-50 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100 transition">
+              {ocrPending ? "인식 중..." : "📷 이미지로 채우기"}
               <input
                 type="file"
                 accept="image/jpeg,image/png"
@@ -270,10 +342,12 @@ export default function ContractForm({
                 }}
               />
             </label>
+
+            {/* 품목 수동 추가 */}
             <button
               type="button"
               onClick={addRow}
-              className="rounded border border-gray-300 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50"
+              className="rounded border border-gray-300 bg-gray-50 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100 transition"
             >
               + 품목 추가
             </button>
