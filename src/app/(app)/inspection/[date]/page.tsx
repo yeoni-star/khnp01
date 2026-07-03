@@ -49,7 +49,7 @@ export default async function InspectionLogPage({
           <DeleteInspectionLogButton logId={log.id} />
         </div>
       </div>
-      <h1 className="hidden text-lg font-semibold text-gray-900 print:block">식재료 검수일지 - {date}</h1>
+      <h1 className="hidden text-2xl font-semibold text-gray-900 print:block">식재료 검수일지</h1>
 
       {columns.length === 0 && (
         <div className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800 print:hidden">

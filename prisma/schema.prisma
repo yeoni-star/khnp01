@@ -178,3 +178,32 @@ model InspectionLogRow {
 
   @@index([logId])
 }
+
+/** 사원증 미등록 외부업체(수기장부 대상) 마스터. 식당과 무관하게 공통으로 관리한다. */
+model MealCompany {
+  id           String   @id @default(cuid())
+  name         String   @unique
+  pricePerMeal Int
+  memo         String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  registrations MealRegistration[]
+
+  @@index([name])
+}
+
+/** 공개 제출 폼(/meal-register)을 통해 접수되는 식사 등록 기록. submittedAt은 서버에서 기록하는 실제 제출 시각. */
+model MealRegistration {
+  id            String      @id @default(cuid())
+  restaurant    Restaurant
+  companyId     String
+  company       MealCompany @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  submitterName String
+  phone         String
+  mealDate      DateTime
+  submittedAt   DateTime    @default(now())
+
+  @@index([restaurant, mealDate])
+  @@index([companyId, mealDate])
+}

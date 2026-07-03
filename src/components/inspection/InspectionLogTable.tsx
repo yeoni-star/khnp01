@@ -168,7 +168,7 @@ export default function InspectionLogTable({
       )}
 
       <p className="hidden text-sm text-gray-900 print:block">
-        입고일자: {dateStr} · 검수자: {inspectorName || "-"}
+        입고일자: {dateStr} · 검수자: {inspectorName || "-"} (인)
       </p>
 
       <div className="flex flex-wrap items-end justify-between gap-3 rounded-md border border-gray-200 bg-white p-4 print:hidden">

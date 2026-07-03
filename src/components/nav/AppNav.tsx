@@ -3,11 +3,12 @@ import RestaurantSwitcher from "./RestaurantSwitcher";
 import type { RestaurantCode } from "@/lib/restaurants";
 
 const NAV_ITEMS = [
-  { href: "/", label: "홈" },
+  { href: "/dashboard", label: "홈" },
   { href: "/contracts", label: "계약/단가" },
   { href: "/slips", label: "거래명세표" },
   { href: "/unmatched-items", label: "미등록 품목" },
   { href: "/inspection", label: "검수일지" },
+  { href: "/meal-settlement", label: "식수 정산" },
   { href: "/reports", label: "기간별 납품보고서" },
   { href: "/required-quantity", label: "소요수량 산출" },
 ];

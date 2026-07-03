@@ -16,5 +16,5 @@ export async function switchRestaurant(restaurant: RestaurantCode) {
     path: "/",
     maxAge: SESSION_MAX_AGE_SECONDS,
   });
-  revalidatePath("/");
+  revalidatePath("/dashboard", "layout");
 }

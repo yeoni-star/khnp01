@@ -30,7 +30,7 @@ export default function LoginPage() {
         setLoading(false);
         return;
       }
-      router.push("/");
+      router.push("/dashboard");
       router.refresh();
     } catch {
       setError("로그인 중 오류가 발생했습니다. 다시 시도해 주세요.");
