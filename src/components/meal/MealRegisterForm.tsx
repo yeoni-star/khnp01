@@ -54,18 +54,25 @@ export default function MealRegisterForm({ companies }: { companies: Company[] }
       day: "numeric",
       weekday: "short",
     });
+
+    const isDinner = result.mealTypeLabel === "석식";
+    const borderColor = isDinner ? "border-orange-300" : "border-primary-300";
+    const bgColor = isDinner ? "bg-orange-50" : "bg-primary-50";
+    const textColor = isDinner ? "text-orange-600" : "text-primary-600";
+    const badgeBg = isDinner ? "bg-orange-600" : "bg-primary-600";
+
     return (
-      <div className="relative rounded-lg border-2 border-primary-300 bg-primary-50 p-6 text-center">
+      <div className={`relative rounded-lg border-2 ${borderColor} ${bgColor} p-6 text-center`}>
         <div className="absolute left-4 top-4 text-4xl font-black text-red-600">
           #{result.sequenceNumber}
         </div>
 
-        <p className="text-sm font-bold text-primary-600">제출 완료</p>
+        <p className={`text-sm font-bold ${textColor}`}>제출 완료</p>
         <p className="mt-1 text-xs text-gray-500">이 화면을 영양사님께 보여주세요.</p>
 
         <div className="mt-6 flex flex-col items-center justify-center gap-3">
           <span className="text-3xl font-black tracking-tight text-gray-900">{dateLabel}</span>
-          <span className="rounded-full bg-primary-600 px-6 py-2 text-2xl font-black text-white shadow-sm">
+          <span className={`rounded-full ${badgeBg} px-6 py-2 text-2xl font-black text-white shadow-sm`}>
             {result.mealTypeLabel}
           </span>
         </div>
