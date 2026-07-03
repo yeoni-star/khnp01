@@ -1,8 +1,6 @@
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { getSession } from "@/lib/session";
-import { RESTAURANT_LABELS, type RestaurantCode } from "@/lib/restaurants";
-import { MEAL_TYPE_LABELS, type MealTypeCode } from "@/lib/meal";
 import PrintButton from "@/components/reports/PrintButton";
 import Link from "next/link";
 import DateRangePicker from "@/components/common/DateRangePicker";
@@ -49,10 +47,29 @@ export default async function MealCompanyDetailPage({
 
   let lunchCount = 0;
   let dinnerCount = 0;
+  const userMap = new Map<string, {
+    name: string;
+    phone: string;
+    lunchCount: number;
+    dinnerCount: number;
+  }>();
 
   for (const r of registrations) {
-    if (r.mealType === "LUNCH") lunchCount++;
-    else dinnerCount++;
+    const key = `${r.submitterName}_${r.phone}`;
+    const entry = userMap.get(key) ?? {
+      name: r.submitterName,
+      phone: r.phone,
+      lunchCount: 0,
+      dinnerCount: 0,
+    };
+    if (r.mealType === "LUNCH") {
+      lunchCount++;
+      entry.lunchCount++;
+    } else {
+      dinnerCount++;
+      entry.dinnerCount++;
+    }
+    userMap.set(key, entry);
   }
 
   const price = company.pricePerMeal;
@@ -60,6 +77,14 @@ export default async function MealCompanyDetailPage({
   const dinnerTotal = dinnerCount * price;
   const totalAmount = lunchTotal + dinnerTotal;
   const totalCount = lunchCount + dinnerCount;
+
+  const userStats = [...userMap.values()]
+    .sort((a, b) => a.name.localeCompare(b.name, "ko"))
+    .map(u => ({
+      ...u,
+      totalCount: u.lunchCount + u.dinnerCount,
+      totalAmount: (u.lunchCount + u.dinnerCount) * price
+    }));
 
   const titleText = `${company.name} 식수 정산 (${startStr} ~ ${endStr})`;
 
@@ -120,34 +145,27 @@ export default async function MealCompanyDetailPage({
           <thead className="bg-gray-50 text-left text-xs font-medium text-gray-500">
             <tr>
               <th className="px-4 py-3 w-16 text-center">번호</th>
-              <th className="px-4 py-3">날짜</th>
-              <th className="px-4 py-3">구분 (중/석)</th>
-              <th className="px-4 py-3">식당</th>
               <th className="px-4 py-3">이름</th>
               <th className="px-4 py-3">연락처</th>
-              <th className="px-4 py-3">제출시각</th>
+              <th className="px-4 py-3 text-center">중식 이용</th>
+              <th className="px-4 py-3 text-center">석식 이용</th>
+              <th className="px-4 py-3 text-center">총 이용건수</th>
+              <th className="px-4 py-3 text-right">정산 합계</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {registrations.map((r, i) => (
-              <tr key={r.id} className="hover:bg-gray-50 transition-colors">
+            {userStats.map((u, i) => (
+              <tr key={`${u.name}_${u.phone}`} className="hover:bg-gray-50 transition-colors">
                 <td className="px-4 py-3 text-gray-600 text-center">{i + 1}</td>
-                <td className="px-4 py-3 text-gray-600">{r.mealDate.toISOString().slice(0, 10)}</td>
-                <td className="px-4 py-3 text-gray-900 font-medium">
-                  {MEAL_TYPE_LABELS[r.mealType as MealTypeCode] || r.mealType}
-                </td>
-                <td className="px-4 py-3 text-gray-600">{RESTAURANT_LABELS[r.restaurant as RestaurantCode]}</td>
-                <td className="px-4 py-3 text-gray-900">{r.submitterName}</td>
-                <td className="px-4 py-3 text-gray-600">{r.phone}</td>
-                <td className="px-4 py-3 text-gray-500 text-xs">
-                  {r.submittedAt.toLocaleString("ko-KR", { 
-                    year: 'numeric', month: '2-digit', day: '2-digit', 
-                    hour: '2-digit', minute:'2-digit', second:'2-digit' 
-                  })}
-                </td>
+                <td className="px-4 py-3 text-gray-900 font-medium">{u.name}</td>
+                <td className="px-4 py-3 text-gray-600">{u.phone}</td>
+                <td className="px-4 py-3 text-gray-600 text-center">{u.lunchCount}회</td>
+                <td className="px-4 py-3 text-gray-600 text-center">{u.dinnerCount}회</td>
+                <td className="px-4 py-3 text-gray-900 font-medium text-center">{u.totalCount}건</td>
+                <td className="px-4 py-3 text-gray-900 font-semibold text-right">{u.totalAmount.toLocaleString()}원</td>
               </tr>
             ))}
-            {registrations.length === 0 && (
+            {userStats.length === 0 && (
               <tr>
                 <td colSpan={7} className="px-4 py-8 text-center text-gray-400">
                   해당 기간에 등록된 식사가 없습니다.

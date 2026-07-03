@@ -2,8 +2,6 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { requireSession } from "@/lib/session";
 import { db } from "@/lib/db";
-import { RESTAURANT_LABELS, type RestaurantCode } from "@/lib/restaurants";
-import { MEAL_TYPE_LABELS, type MealTypeCode } from "@/lib/meal";
 import { buildMealSettlementWorkbook } from "@/lib/excel/build-meal-settlement-workbook";
 
 function getKstDateRange(startStr: string, endStr: string) {
@@ -45,20 +43,50 @@ export async function GET(request: NextRequest) {
     orderBy: [{ mealDate: "asc" }, { submittedAt: "asc" }],
   });
 
+  let totalLunchCount = 0;
+  let totalDinnerCount = 0;
+  const userMap = new Map<string, {
+    name: string;
+    phone: string;
+    lunchCount: number;
+    dinnerCount: number;
+  }>();
+
+  for (const r of registrations) {
+    const key = `${r.submitterName}_${r.phone}`;
+    const entry = userMap.get(key) ?? {
+      name: r.submitterName,
+      phone: r.phone,
+      lunchCount: 0,
+      dinnerCount: 0,
+    };
+    if (r.mealType === "LUNCH") {
+      entry.lunchCount++;
+      totalLunchCount++;
+    } else {
+      entry.dinnerCount++;
+      totalDinnerCount++;
+    }
+    userMap.set(key, entry);
+  }
+
+  const userStats = [...userMap.values()]
+    .sort((a, b) => a.name.localeCompare(b.name, "ko"))
+    .map(u => ({
+      ...u,
+      totalCount: u.lunchCount + u.dinnerCount,
+      totalAmount: (u.lunchCount + u.dinnerCount) * company.pricePerMeal
+    }));
+
   const monthLabel = `${startStr} ~ ${endStr}`;
 
   const buffer = await buildMealSettlementWorkbook({
     companyName: company.name,
     monthLabel,
     pricePerMeal: company.pricePerMeal,
-    rows: registrations.map((r) => ({
-      mealDate: r.mealDate.toISOString().slice(0, 10),
-      mealTypeLabel: MEAL_TYPE_LABELS[r.mealType as MealTypeCode],
-      restaurantLabel: RESTAURANT_LABELS[r.restaurant as RestaurantCode],
-      submitterName: r.submitterName,
-      phone: r.phone,
-      submittedAt: r.submittedAt.toLocaleString("ko-KR"),
-    })),
+    totalLunchCount,
+    totalDinnerCount,
+    rows: userStats,
   });
 
   // Safe ASCII filename to ensure the browser keeps the .xlsx extension
