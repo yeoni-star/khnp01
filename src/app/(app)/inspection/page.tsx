@@ -2,18 +2,29 @@ import Link from "next/link";
 import { db } from "@/lib/db";
 import { getSession } from "@/lib/session";
 import InspectionNoticeModal from "@/components/inspection/InspectionNoticeModal";
-import InspectionDateEntry from "@/components/inspection/InspectionDateEntry";
+import MonthCalendar from "@/components/common/MonthCalendar";
+import { getMonthRange, parseMonthParam } from "@/lib/month-range";
 
-export default async function InspectionPage() {
+export default async function InspectionPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ month?: string }>;
+}) {
+  const sp = await searchParams;
+  const month = parseMonthParam(sp.month);
+  const { start, end } = getMonthRange(month);
+
   const session = await getSession();
   const restaurant = session!.restaurant;
 
   const logs = await db.inspectionLog.findMany({
-    where: { restaurant },
+    where: { restaurant, logDate: { gte: start, lte: end } },
     orderBy: { logDate: "desc" },
-    take: 30,
     include: { _count: { select: { rows: true } } },
   });
+  const confirmedDates = logs
+    .filter((l) => l.status === "CONFIRMED")
+    .map((l) => l.logDate.toISOString().slice(0, 10));
 
   return (
     <div className="space-y-6">
@@ -32,7 +43,13 @@ export default async function InspectionPage() {
         </Link>
       </div>
 
-      <InspectionDateEntry />
+      <MonthCalendar
+        basePath="/inspection"
+        month={month}
+        markedDates={confirmedDates}
+        legendLabel="확정된 검수일지가 있는 날짜"
+        dayBasePath="/inspection"
+      />
 
       <div className="overflow-hidden rounded-md border border-gray-200 bg-white">
         <table className="w-full text-sm">
@@ -41,6 +58,7 @@ export default async function InspectionPage() {
               <th className="px-4 py-2">입고일자</th>
               <th className="px-4 py-2">검수자</th>
               <th className="px-4 py-2">품목 수</th>
+              <th className="px-4 py-2">상태</th>
               <th className="px-4 py-2" />
             </tr>
           </thead>
@@ -50,6 +68,15 @@ export default async function InspectionPage() {
                 <td className="px-4 py-2 text-gray-600">{log.logDate.toISOString().slice(0, 10)}</td>
                 <td className="px-4 py-2 text-gray-600">{log.inspectorName ?? "-"}</td>
                 <td className="px-4 py-2 text-gray-600">{log._count.rows}</td>
+                <td className="px-4 py-2">
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                      log.status === "CONFIRMED" ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"
+                    }`}
+                  >
+                    {log.status === "CONFIRMED" ? "확정" : "임시저장"}
+                  </span>
+                </td>
                 <td className="px-4 py-2 text-right">
                   <Link
                     href={`/inspection/${log.logDate.toISOString().slice(0, 10)}`}
@@ -62,8 +89,8 @@ export default async function InspectionPage() {
             ))}
             {logs.length === 0 && (
               <tr>
-                <td colSpan={4} className="px-4 py-6 text-center text-gray-400">
-                  작성된 검수일지가 없습니다.
+                <td colSpan={5} className="px-4 py-6 text-center text-gray-400">
+                  이번 달에 작성된 검수일지가 없습니다.
                 </td>
               </tr>
             )}

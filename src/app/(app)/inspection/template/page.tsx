@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { getSession } from "@/lib/session";
 import { RESTAURANT_LABELS } from "@/lib/restaurants";
-import { DEFAULT_INSPECTION_COLUMNS, type InspectionColumn } from "@/lib/inspection";
+import type { InspectionColumn } from "@/lib/inspection";
 import TemplateEditorForm from "@/components/inspection/TemplateEditorForm";
 
 export default async function InspectionTemplatePage() {
@@ -9,7 +9,7 @@ export default async function InspectionTemplatePage() {
   const restaurant = session!.restaurant;
 
   const template = await db.inspectionTemplate.findUnique({ where: { restaurant } });
-  const columns = (template?.columns as InspectionColumn[] | undefined) ?? DEFAULT_INSPECTION_COLUMNS;
+  const columns = (template?.columns as InspectionColumn[] | undefined) ?? [];
 
   return (
     <div className="space-y-6">

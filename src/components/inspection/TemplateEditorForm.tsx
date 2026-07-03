@@ -2,7 +2,19 @@
 
 import { useState, useTransition } from "react";
 import { saveInspectionTemplate } from "@/actions/inspection-actions";
-import { INSPECTION_COLUMN_TYPES, INSPECTION_COLUMN_TYPE_LABELS, type InspectionColumnType } from "@/lib/inspection";
+import {
+  INSPECTION_BASE_COLUMN_LABELS,
+  INSPECTION_COLUMN_TYPES,
+  INSPECTION_COLUMN_TYPE_LABELS,
+  type InspectionColumnType,
+} from "@/lib/inspection";
+
+function sampleValueFor(type: InspectionColumnType, optionsText: string): string {
+  if (type === "CHECK") return "O";
+  if (type === "DATE") return "26.7.17";
+  if (type === "SELECT") return optionsText.split(",").map((o) => o.trim()).filter(Boolean)[0] ?? "선택지1";
+  return "예시값";
+}
 
 type ColumnRow = {
   key: string;
@@ -91,6 +103,47 @@ export default function TemplateEditorForm({
         품목명 · 단위 · 수량 · 납품업체는 확정된 거래명세표에서 자동으로 채워지는 고정 컬럼입니다. 아래에서 그
         뒤에 붙는 검수 항목 컬럼을 {restaurantLabel} 기준으로 자유롭게 구성하세요.
       </p>
+
+      <div>
+        <p className="mb-1 text-xs font-medium text-gray-600">미리보기 — 실제 검수일지 화면은 이렇게 구성됩니다</p>
+        <div className="overflow-x-auto rounded-md border border-gray-200 bg-white">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 text-left text-xs font-medium text-gray-500">
+              <tr>
+                {INSPECTION_BASE_COLUMN_LABELS.map((label) => (
+                  <th key={label} className="whitespace-nowrap px-2 py-2">
+                    {label}
+                  </th>
+                ))}
+                {columns.map((col) => (
+                  <th key={col.key} className="whitespace-nowrap border-l border-gray-200 px-2 py-2 text-primary-700">
+                    {col.label || "(이름 없음)"}
+                  </th>
+                ))}
+                {columns.length === 0 && (
+                  <th className="whitespace-nowrap border-l border-dashed border-gray-300 px-2 py-2 text-gray-400">
+                    + 아래에서 컬럼을 추가해 보세요
+                  </th>
+                )}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100 text-gray-400">
+              <tr>
+                <td className="px-2 py-2">양파</td>
+                <td className="px-2 py-2">kg</td>
+                <td className="px-2 py-2">40</td>
+                <td className="px-2 py-2">OO상사</td>
+                {columns.map((col) => (
+                  <td key={col.key} className="border-l border-gray-100 px-2 py-2">
+                    {sampleValueFor(col.type, col.optionsText)}
+                  </td>
+                ))}
+                {columns.length === 0 && <td className="border-l border-dashed border-gray-200 px-2 py-2" />}
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
 
       <div className="space-y-3">
         {columns.map((col, index) => (

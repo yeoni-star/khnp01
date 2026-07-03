@@ -2,7 +2,12 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { importConfirmedSlipsToLog, saveInspectionLog } from "@/actions/inspection-actions";
+import {
+  confirmInspectionLog,
+  importConfirmedSlipsToLog,
+  reopenInspectionLog,
+  saveInspectionLog,
+} from "@/actions/inspection-actions";
 import type { InspectionColumn } from "@/lib/inspection";
 
 type Row = {
@@ -21,18 +26,6 @@ function newRowKey() {
   return `row-${rowKeySeq}`;
 }
 
-function emptyRow(): Row {
-  return {
-    key: newRowKey(),
-    sourceItemId: null,
-    itemName: "",
-    unit: "",
-    quantity: "",
-    vendorName: "",
-    values: {},
-  };
-}
-
 function nextCheckValue(current: string | undefined): string {
   if (current === "O") return "X";
   if (current === "X") return "";
@@ -42,12 +35,14 @@ function nextCheckValue(current: string | undefined): string {
 export default function InspectionLogTable({
   logId,
   dateStr,
+  status,
   columns,
   initialInspectorName,
   initialRows,
 }: {
   logId: string;
   dateStr: string;
+  status: "DRAFT" | "CONFIRMED";
   columns: InspectionColumn[];
   initialInspectorName: string;
   initialRows: {
@@ -60,27 +55,22 @@ export default function InspectionLogTable({
   }[];
 }) {
   const router = useRouter();
+  const readOnly = status === "CONFIRMED";
   const [inspectorName, setInspectorName] = useState(initialInspectorName);
   const [rows, setRows] = useState<Row[]>(
-    initialRows.length > 0
-      ? initialRows.map((r) => ({
-          key: newRowKey(),
-          sourceItemId: r.sourceItemId,
-          itemName: r.itemName,
-          unit: r.unit,
-          quantity: String(r.quantity),
-          vendorName: r.vendorName,
-          values: r.values,
-        }))
-      : [emptyRow()]
+    initialRows.map((r) => ({
+      key: newRowKey(),
+      sourceItemId: r.sourceItemId,
+      itemName: r.itemName,
+      unit: r.unit,
+      quantity: String(r.quantity),
+      vendorName: r.vendorName,
+      values: r.values,
+    }))
   );
   const [message, setMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
   const [pending, startTransition] = useTransition();
   const [importing, setImporting] = useState(false);
-
-  function updateRow(key: string, patch: Partial<Row>) {
-    setRows((prev) => prev.map((r) => (r.key === key ? { ...r, ...patch } : r)));
-  }
 
   function setCellValue(key: string, columnKey: string, value: string) {
     setRows((prev) =>
@@ -90,10 +80,6 @@ export default function InspectionLogTable({
 
   function fillColumn(columnKey: string, value: string) {
     setRows((prev) => prev.map((r) => ({ ...r, values: { ...r.values, [columnKey]: value } })));
-  }
-
-  function addRow() {
-    setRows((prev) => [...prev, emptyRow()]);
   }
 
   function removeRow(key: string) {
@@ -112,9 +98,8 @@ export default function InspectionLogTable({
     router.refresh();
   }
 
-  function handleSave() {
-    setMessage(null);
-    const payload = rows
+  function buildPayload() {
+    return rows
       .filter((r) => r.itemName.trim())
       .map((r) => ({
         sourceItemId: r.sourceItemId,
@@ -124,8 +109,12 @@ export default function InspectionLogTable({
         vendorName: r.vendorName.trim(),
         values: r.values,
       }));
+  }
+
+  function handleSave() {
+    setMessage(null);
     startTransition(async () => {
-      const result = await saveInspectionLog(logId, inspectorName, JSON.stringify(payload));
+      const result = await saveInspectionLog(logId, inspectorName, JSON.stringify(buildPayload()));
       if (result.ok) {
         setMessage({ type: "success", text: "저장되었습니다." });
         router.refresh();
@@ -135,34 +124,81 @@ export default function InspectionLogTable({
     });
   }
 
+  function handleConfirm() {
+    if (!confirm("이 검수일지를 확정할까요? 확정 후에는 '수정'을 눌러야 다시 편집할 수 있습니다.")) return;
+    setMessage(null);
+    startTransition(async () => {
+      const saveResult = await saveInspectionLog(logId, inspectorName, JSON.stringify(buildPayload()));
+      if (!saveResult.ok) {
+        setMessage({ type: "error", text: saveResult.message });
+        return;
+      }
+      const result = await confirmInspectionLog(logId);
+      if (result.ok) {
+        router.refresh();
+      } else {
+        setMessage({ type: "error", text: result.message });
+      }
+    });
+  }
+
+  function handleReopen() {
+    if (!confirm("확정을 취소하고 다시 편집할 수 있게 할까요?")) return;
+    setMessage(null);
+    startTransition(async () => {
+      const result = await reopenInspectionLog(logId);
+      if (result.ok) {
+        router.refresh();
+      } else {
+        setMessage({ type: "error", text: result.message });
+      }
+    });
+  }
+
   return (
     <div className="space-y-4">
-      <div className="rounded-md border border-primary-200 bg-primary-50 px-3 py-2 text-xs text-primary-700">
-        확정된 거래명세표만 자동으로 불러옵니다. 아직 확정하지 않은 거래명세표가 있다면 먼저 확정해 주세요.
-      </div>
+      {readOnly ? (
+        <div className="rounded-md border border-primary-200 bg-primary-50 px-3 py-2 text-xs font-medium text-primary-700 print:hidden">
+          확정된 검수일지입니다. 수정하려면 아래 &apos;수정&apos; 버튼을 눌러 확정을 취소해 주세요.
+        </div>
+      ) : (
+        <div className="rounded-md border border-primary-200 bg-primary-50 px-3 py-2 text-xs text-primary-700 print:hidden">
+          확정된 거래명세표만 자동으로 불러옵니다. 아직 확정하지 않은 거래명세표가 있다면 먼저 확정해 주세요.
+        </div>
+      )}
 
-      <div className="flex flex-wrap items-end justify-between gap-3 rounded-md border border-gray-200 bg-white p-4">
+      <p className="hidden text-sm text-gray-900 print:block">
+        입고일자: {dateStr} · 검수자: {inspectorName || "-"}
+      </p>
+
+      <div className="flex flex-wrap items-end justify-between gap-3 rounded-md border border-gray-200 bg-white p-4 print:hidden">
         <div>
           <label className="mb-1 block text-xs font-medium text-gray-600">입고일자</label>
           <p className="text-sm font-medium text-gray-900">{dateStr}</p>
         </div>
         <div>
           <label className="mb-1 block text-xs font-medium text-gray-600">검수자</label>
-          <input
-            value={inspectorName}
-            onChange={(e) => setInspectorName(e.target.value)}
-            placeholder="검수자명"
-            className="w-40 rounded border border-gray-300 px-2 py-1.5 text-sm"
-          />
+          {readOnly ? (
+            <p className="text-sm font-medium text-gray-900">{inspectorName || "-"}</p>
+          ) : (
+            <input
+              value={inspectorName}
+              onChange={(e) => setInspectorName(e.target.value)}
+              placeholder="검수자명"
+              className="w-40 rounded border border-gray-300 px-2 py-1.5 text-sm"
+            />
+          )}
         </div>
-        <button
-          type="button"
-          onClick={handleReimport}
-          disabled={importing}
-          className="rounded border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-        >
-          {importing ? "불러오는 중..." : "거래명세표 다시 불러오기"}
-        </button>
+        {!readOnly && (
+          <button
+            type="button"
+            onClick={handleReimport}
+            disabled={importing}
+            className="rounded border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+          >
+            {importing ? "불러오는 중..." : "거래명세표 다시 불러오기"}
+          </button>
+        )}
       </div>
 
       <div className="overflow-x-auto rounded-md border border-gray-200 bg-white">
@@ -177,8 +213,8 @@ export default function InspectionLogTable({
                 <th key={col.key} className="px-2 py-2">
                   <div className="flex items-center gap-2">
                     <span>{col.label}</span>
-                    {col.type === "CHECK" && (
-                      <span className="flex gap-1">
+                    {col.type === "CHECK" && !readOnly && (
+                      <span className="flex gap-1 print:hidden">
                         <button
                           type="button"
                           onClick={() => fillColumn(col.key, "O")}
@@ -198,43 +234,32 @@ export default function InspectionLogTable({
                   </div>
                 </th>
               ))}
-              <th className="px-2 py-2" />
+              {!readOnly && <th className="px-2 py-2 print:hidden" />}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
+            {rows.length === 0 && (
+              <tr>
+                <td colSpan={5 + columns.length} className="px-2 py-6 text-center text-sm text-gray-400">
+                  확정된 거래명세표 품목이 없습니다. 거래명세표를 먼저 확정해 주세요.
+                </td>
+              </tr>
+            )}
             {rows.map((row) => (
               <tr key={row.key}>
-                <td className="px-2 py-2">
-                  <input
-                    value={row.itemName}
-                    onChange={(e) => updateRow(row.key, { itemName: e.target.value })}
-                    className="w-32 rounded border border-gray-300 px-2 py-1 text-sm"
-                  />
-                </td>
-                <td className="px-2 py-2">
-                  <input
-                    value={row.unit}
-                    onChange={(e) => updateRow(row.key, { unit: e.target.value })}
-                    className="w-14 rounded border border-gray-300 px-2 py-1 text-sm"
-                  />
-                </td>
-                <td className="px-2 py-2">
-                  <input
-                    type="number"
-                    value={row.quantity}
-                    onChange={(e) => updateRow(row.key, { quantity: e.target.value })}
-                    className="w-16 rounded border border-gray-300 px-2 py-1 text-sm"
-                  />
-                </td>
-                <td className="px-2 py-2">
-                  <input
-                    value={row.vendorName}
-                    onChange={(e) => updateRow(row.key, { vendorName: e.target.value })}
-                    className="w-24 rounded border border-gray-300 px-2 py-1 text-sm"
-                  />
-                </td>
+                <td className="px-2 py-2 text-gray-900">{row.itemName}</td>
+                <td className="px-2 py-2 text-gray-600">{row.unit}</td>
+                <td className="px-2 py-2 text-gray-600">{row.quantity}</td>
+                <td className="px-2 py-2 text-gray-600">{row.vendorName}</td>
                 {columns.map((col) => {
                   const value = row.values[col.key] ?? "";
+                  if (readOnly) {
+                    return (
+                      <td key={col.key} className="px-2 py-2 text-gray-700">
+                        {value || "-"}
+                      </td>
+                    );
+                  }
                   if (col.type === "CHECK") {
                     return (
                       <td key={col.key} className="px-2 py-2">
@@ -294,44 +319,61 @@ export default function InspectionLogTable({
                     </td>
                   );
                 })}
-                <td className="px-2 py-2">
-                  <button
-                    type="button"
-                    onClick={() => removeRow(row.key)}
-                    className="text-xs text-red-500 hover:underline"
-                  >
-                    삭제
-                  </button>
-                </td>
+                {!readOnly && (
+                  <td className="px-2 py-2 print:hidden">
+                    <button
+                      type="button"
+                      onClick={() => removeRow(row.key)}
+                      className="text-xs text-red-500 hover:underline"
+                    >
+                      삭제
+                    </button>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>
         </table>
       </div>
 
-      <button
-        type="button"
-        onClick={addRow}
-        className="rounded border border-gray-300 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50"
-      >
-        + 행 추가
-      </button>
-
       {message && (
-        <p className={`text-sm ${message.type === "error" ? "text-red-600" : "text-primary-600"}`}>
+        <p
+          className={`text-sm print:hidden ${message.type === "error" ? "text-red-600" : "text-primary-600"}`}
+        >
           {message.text}
         </p>
       )}
 
-      <div>
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={pending}
-          className="rounded bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
-        >
-          {pending ? "저장 중..." : "저장"}
-        </button>
+      <div className="flex gap-2 print:hidden">
+        {readOnly ? (
+          <button
+            type="button"
+            onClick={handleReopen}
+            disabled={pending}
+            className="rounded border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+          >
+            {pending ? "처리 중..." : "수정"}
+          </button>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={pending}
+              className="rounded border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            >
+              {pending ? "저장 중..." : "저장"}
+            </button>
+            <button
+              type="button"
+              onClick={handleConfirm}
+              disabled={pending}
+              className="rounded bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
+            >
+              {pending ? "처리 중..." : "확정"}
+            </button>
+          </>
+        )}
       </div>
     </div>
   );

@@ -25,11 +25,5 @@ export const inspectionColumnsSchema = z.array(inspectionColumnSchema);
 
 export type InspectionColumn = z.infer<typeof inspectionColumnSchema>;
 
-/** 새 식당에서 검수일지를 처음 쓸 때 기본으로 제공하는 예시 컬럼 구성 (자유롭게 수정 가능) */
-export const DEFAULT_INSPECTION_COLUMNS: InspectionColumn[] = [
-  { key: "packaging", label: "포장", type: "CHECK" },
-  { key: "quality", label: "품질", type: "CHECK" },
-  { key: "expiry", label: "유통기한/제조일", type: "DATE" },
-  { key: "temp", label: "온도", type: "TEXT" },
-  { key: "action", label: "조치사항", type: "TEXT" },
-];
+/** 확정된 거래명세표에서 그대로 채워지는 고정 컬럼 (커스터마이징 불가) */
+export const INSPECTION_BASE_COLUMN_LABELS = ["품목명", "단위", "수량", "납품업체"] as const;

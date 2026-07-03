@@ -1,0 +1,148 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { currentMonthStr, shiftMonth } from "@/lib/month-range";
+
+const WEEK_DAYS = ["일", "월", "화", "수", "목", "금", "토"];
+
+function getDaysInMonth(year: number, month: number) {
+  const firstDayIndex = new Date(year, month, 1).getDay();
+  const lastDate = new Date(year, month + 1, 0).getDate();
+  const days: { date: string; dayNum: number; isCurrentMonth: boolean }[] = [];
+
+  const prevMonthLastDate = new Date(year, month, 0).getDate();
+  for (let i = firstDayIndex - 1; i >= 0; i--) {
+    const prevYear = month === 0 ? year - 1 : year;
+    const prevMon = month === 0 ? 11 : month - 1;
+    const d = prevMonthLastDate - i;
+    const dateString = `${prevYear}-${String(prevMon + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    days.push({ date: dateString, dayNum: d, isCurrentMonth: false });
+  }
+
+  for (let i = 1; i <= lastDate; i++) {
+    const dateString = `${year}-${String(month + 1).padStart(2, "0")}-${String(i).padStart(2, "0")}`;
+    days.push({ date: dateString, dayNum: i, isCurrentMonth: true });
+  }
+
+  const remaining = 42 - days.length;
+  for (let i = 1; i <= remaining; i++) {
+    const nextYear = month === 11 ? year + 1 : year;
+    const nextMon = month === 11 ? 0 : month + 1;
+    const dateString = `${nextYear}-${String(nextMon + 1).padStart(2, "0")}-${String(i).padStart(2, "0")}`;
+    days.push({ date: dateString, dayNum: i, isCurrentMonth: false });
+  }
+
+  return days;
+}
+
+function todayStr() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+export default function MonthCalendar({
+  basePath,
+  month,
+  markedDates,
+  legendLabel,
+  dayBasePath,
+}: {
+  basePath: string;
+  month: string;
+  markedDates: string[];
+  legendLabel: string;
+  /** 지정하면 날짜 클릭 시 `${dayBasePath}/${date}` 로 이동한다. */
+  dayBasePath?: string;
+}) {
+  const router = useRouter();
+  const today = todayStr();
+  const [yearStr, monthStr] = month.split("-");
+  const year = Number(yearStr);
+  const monthIdx = Number(monthStr) - 1;
+
+  const markedSet = new Set(markedDates);
+  const days = getDaysInMonth(year, monthIdx);
+  const canGoNext = month !== currentMonthStr();
+
+  function goToMonth(delta: number) {
+    router.push(`${basePath}?month=${shiftMonth(month, delta)}`);
+  }
+
+  return (
+    <div className="w-full max-w-sm rounded-md border border-gray-200 bg-white p-4">
+      <div className="mb-3 flex items-center justify-between border-b pb-2">
+        <button
+          type="button"
+          onClick={() => goToMonth(-1)}
+          className="rounded p-1.5 text-xs font-bold text-gray-500 hover:bg-gray-100"
+        >
+          &lt; 이전달
+        </button>
+        <span className="text-sm font-bold text-gray-800">
+          {year}년 {monthIdx + 1}월
+        </span>
+        {canGoNext ? (
+          <button
+            type="button"
+            onClick={() => goToMonth(1)}
+            className="rounded p-1.5 text-xs font-bold text-gray-500 hover:bg-gray-100"
+          >
+            다음달 &gt;
+          </button>
+        ) : (
+          <span className="p-1.5 text-xs font-bold text-transparent">다음달 &gt;</span>
+        )}
+      </div>
+
+      <div className="mb-2 grid grid-cols-7 gap-1 text-center text-xs font-bold text-gray-500">
+        {WEEK_DAYS.map((d) => (
+          <div key={d} className={d === "일" ? "text-red-500" : d === "토" ? "text-blue-500" : ""}>
+            {d}
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-7 gap-1">
+        {days.map((day) => {
+          const isMarked = markedSet.has(day.date);
+          const isToday = day.date === today;
+          const className = `relative flex flex-col items-center justify-center rounded py-1.5 text-xs font-medium transition ${
+            !day.isCurrentMonth
+              ? "text-gray-300"
+              : isToday
+              ? "bg-primary-600 font-bold text-white"
+              : "text-gray-700"
+          } ${dayBasePath && day.isCurrentMonth ? "hover:bg-gray-100" : ""}`;
+          const content = (
+            <>
+              {day.dayNum}
+              {isMarked && (
+                <span className={`mt-0.5 h-1.5 w-1.5 rounded-full ${isToday ? "bg-white" : "bg-primary-600"}`} />
+              )}
+            </>
+          );
+          if (dayBasePath) {
+            return (
+              <button
+                key={day.date}
+                type="button"
+                onClick={() => router.push(`${dayBasePath}/${day.date}`)}
+                className={className}
+              >
+                {content}
+              </button>
+            );
+          }
+          return (
+            <div key={day.date} className={className}>
+              {content}
+            </div>
+          );
+        })}
+      </div>
+
+      <p className="mt-3 flex items-center gap-1 text-xs text-gray-500">
+        <span className="inline-block h-1.5 w-1.5 rounded-full bg-primary-600" /> {legendLabel}
+      </p>
+    </div>
+  );
+}

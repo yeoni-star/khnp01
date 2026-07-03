@@ -137,6 +137,9 @@ export async function saveInspectionLog(
 
   const log = await db.inspectionLog.findUnique({ where: { id: logId } });
   if (!log) return { ok: false, message: "검수일지를 찾을 수 없습니다." };
+  if (log.status === "CONFIRMED") {
+    return { ok: false, message: "확정된 검수일지는 수정할 수 없습니다. 먼저 '수정'으로 확정을 취소해 주세요." };
+  }
 
   await db.$transaction([
     db.inspectionLogRow.deleteMany({ where: { logId } }),
@@ -160,6 +163,48 @@ export async function saveInspectionLog(
   ]);
 
   revalidatePath(`/inspection/${log.logDate.toISOString().slice(0, 10)}`);
+  revalidatePath("/inspection");
+  return { ok: true };
+}
+
+export async function confirmInspectionLog(logId: string): Promise<ActionResult> {
+  await requireSession();
+  const log = await db.inspectionLog.findUnique({ where: { id: logId }, select: { rows: { select: { id: true } }, logDate: true } });
+  if (!log) return { ok: false, message: "검수일지를 찾을 수 없습니다." };
+  if (log.rows.length === 0) {
+    return { ok: false, message: "품목이 없는 검수일지는 확정할 수 없습니다." };
+  }
+
+  await db.inspectionLog.update({
+    where: { id: logId },
+    data: { status: "CONFIRMED", confirmedAt: new Date() },
+  });
+
+  const dateStr = log.logDate.toISOString().slice(0, 10);
+  revalidatePath(`/inspection/${dateStr}`);
+  revalidatePath("/inspection");
+  return { ok: true };
+}
+
+export async function reopenInspectionLog(logId: string): Promise<ActionResult> {
+  await requireSession();
+  const log = await db.inspectionLog.findUnique({ where: { id: logId }, select: { logDate: true } });
+  if (!log) return { ok: false, message: "검수일지를 찾을 수 없습니다." };
+
+  await db.inspectionLog.update({
+    where: { id: logId },
+    data: { status: "DRAFT", confirmedAt: null },
+  });
+
+  const dateStr = log.logDate.toISOString().slice(0, 10);
+  revalidatePath(`/inspection/${dateStr}`);
+  revalidatePath("/inspection");
+  return { ok: true };
+}
+
+export async function deleteInspectionLog(logId: string): Promise<ActionResult> {
+  await requireSession();
+  await db.inspectionLog.delete({ where: { id: logId } });
   revalidatePath("/inspection");
   return { ok: true };
 }

@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import AppNav from "@/components/nav/AppNav";
+import BackButton from "@/components/nav/BackButton";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await getSession();
@@ -11,7 +12,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <div className="flex min-h-screen flex-1 flex-col" data-restaurant={session.restaurant}>
       <AppNav restaurant={session.restaurant} />
-      <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-6">{children}</main>
+      <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-6">
+        <BackButton />
+        {children}
+      </main>
     </div>
   );
 }
