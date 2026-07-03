@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useTransition, type FormEvent } from "react";
+import { useState, useTransition, useRef, type FormEvent } from "react";
 import { submitMealRegistration } from "@/actions/meal-public-actions";
 import { RESTAURANTS, RESTAURANT_LABELS, type RestaurantCode } from "@/lib/restaurants";
+import html2canvas from "html2canvas";
 
 type Company = { id: string; name: string };
 
@@ -24,6 +25,7 @@ export default function MealRegisterForm({ companies }: { companies: Company[] }
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [result, setResult] = useState<SubmittedInfo | null>(null);
+  const captureRef = useRef<HTMLDivElement>(null);
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -46,6 +48,21 @@ export default function MealRegisterForm({ companies }: { companies: Company[] }
     });
   }
 
+  const handleCapture = async () => {
+    if (!captureRef.current) return;
+    try {
+      const canvas = await html2canvas(captureRef.current, { scale: 2 });
+      const image = canvas.toDataURL("image/png");
+      const link = document.createElement("a");
+      link.href = image;
+      link.download = `식사등록_${result?.mealDate}_${result?.submitterName}.png`;
+      link.click();
+    } catch (err) {
+      console.error("Capture failed", err);
+      alert("이미지 저장에 실패했습니다.");
+    }
+  };
+
   if (result) {
     const submittedTime = new Date(result.submittedAt);
     const dateLabel = new Date(`${result.mealDate}T00:00:00`).toLocaleDateString("ko-KR", {
@@ -62,41 +79,53 @@ export default function MealRegisterForm({ companies }: { companies: Company[] }
     const badgeBg = isDinner ? "bg-orange-600" : "bg-primary-600";
 
     return (
-      <div className={`relative rounded-lg border-2 ${borderColor} ${bgColor} p-6 text-center`}>
-        <div className="absolute left-4 top-4 text-4xl font-black text-red-600">
-          #{result.sequenceNumber}
+      <div className="space-y-4">
+        <div ref={captureRef} className={`relative rounded-lg border-2 ${borderColor} ${bgColor} p-6 text-center bg-white`}>
+          <div className="absolute left-4 top-4 text-4xl font-black text-red-600">
+            #{result.sequenceNumber}
+          </div>
+
+          <p className={`text-sm font-bold ${textColor}`}>제출 완료</p>
+          <p className="mt-1 text-xs text-gray-500">이 화면을 영양사님께 보여주세요.</p>
+
+          <div className="mt-6 flex flex-col items-center justify-center gap-3">
+            <span className="text-3xl font-black tracking-tight text-gray-900">{dateLabel}</span>
+            <span className={`rounded-full ${badgeBg} px-6 py-2 text-2xl font-black text-white shadow-sm`}>
+              {result.mealTypeLabel}
+            </span>
+          </div>
+
+          <p className="mt-6 text-4xl font-extrabold text-gray-900">{result.submitterName}</p>
+          <p className="mt-2 text-xl font-medium text-gray-600">{result.companyName}</p>
+
+          <div className="mt-6 space-y-1 rounded-md bg-white border border-gray-100 shadow-sm p-4 text-sm text-gray-500">
+            <p className="text-base font-semibold text-gray-800">식당 : {result.restaurantLabel}</p>
+            <p>제출시각 : {submittedTime.toLocaleString("ko-KR")}</p>
+          </div>
         </div>
-
-        <p className={`text-sm font-bold ${textColor}`}>제출 완료</p>
-        <p className="mt-1 text-xs text-gray-500">이 화면을 영양사님께 보여주세요.</p>
-
-        <div className="mt-6 flex flex-col items-center justify-center gap-3">
-          <span className="text-3xl font-black tracking-tight text-gray-900">{dateLabel}</span>
-          <span className={`rounded-full ${badgeBg} px-6 py-2 text-2xl font-black text-white shadow-sm`}>
-            {result.mealTypeLabel}
-          </span>
+        
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={handleCapture}
+            className="flex-1 rounded-md bg-gray-900 py-3 text-sm font-bold text-white hover:bg-gray-800 shadow-sm transition-colors"
+          >
+            갤러리에 저장하기
+          </button>
+          
+          <button
+            type="button"
+            onClick={() => {
+              setResult(null);
+              setSubmitterName("");
+              setPhone("");
+              setCompanyId("");
+            }}
+            className="flex-1 rounded-md border border-gray-300 bg-white py-3 text-sm font-bold text-gray-700 hover:bg-gray-50 shadow-sm transition-colors"
+          >
+            다시 등록
+          </button>
         </div>
-
-        <p className="mt-5 text-3xl font-extrabold text-gray-900">{result.submitterName}</p>
-        <p className="mt-1 text-lg font-medium text-gray-600">{result.companyName}</p>
-
-        <div className="mt-5 space-y-1 rounded-md bg-white p-3 text-sm text-gray-500">
-          <p>식당 : {result.restaurantLabel}</p>
-          <p>제출시각 : {submittedTime.toLocaleString("ko-KR")}</p>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => {
-            setResult(null);
-            setSubmitterName("");
-            setPhone("");
-            setCompanyId("");
-          }}
-          className="mt-4 text-sm text-gray-500 underline hover:text-gray-700"
-        >
-          다시 등록
-        </button>
       </div>
     );
   }
