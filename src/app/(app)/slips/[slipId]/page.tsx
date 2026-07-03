@@ -20,6 +20,12 @@ export default async function SlipDetailPage({
 
   const activeContractItems = await listActiveContractItems(slip.vendorId, slip.deliveryDate);
 
+  const unmatchedItems = await db.deliverySlipItem.findMany({
+    where: { matchType: "NONE" },
+    select: { itemName: true, unit: true, unitPrice: true },
+    distinct: ["itemName", "unit", "unitPrice"],
+  });
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -43,6 +49,11 @@ export default async function SlipDetailPage({
           id: i.id,
           itemName: i.itemName,
           category: i.category,
+          unit: i.unit,
+          unitPrice: i.unitPrice,
+        }))}
+        unmatchedItems={unmatchedItems.map((i) => ({
+          itemName: i.itemName,
           unit: i.unit,
           unitPrice: i.unitPrice,
         }))}

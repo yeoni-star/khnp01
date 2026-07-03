@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useRef } from "react";
+import { useState, useTransition, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { saveSlipDraft, confirmSlip } from "@/actions/slip-actions";
 import type { CategoryCode } from "@/lib/categories";
@@ -108,17 +108,25 @@ function matchImportedRow(
   };
 }
 
+type UnmatchedItemOption = {
+  itemName: string;
+  unit: string;
+  unitPrice: number;
+};
+
 export default function SlipItemsTable({
   slipId,
   status,
   taxType,
   contractItems,
+  unmatchedItems = [],
   initialItems,
 }: {
   slipId: string;
   status: "DRAFT" | "CONFIRMED";
   taxType: TaxTypeCode;
   contractItems: ContractItemOption[];
+  unmatchedItems?: UnmatchedItemOption[];
   initialItems: {
     itemName: string;
     category: CategoryCode | null;
@@ -155,7 +163,80 @@ export default function SlipItemsTable({
   const [importNote, setImportNote] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
+  
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeRowKey, setActiveRowKey] = useState<string | null>(null);
+
+  const searchPool = useMemo(() => {
+    const contractOptions = contractItems.map((item) => ({
+      key: `contract-${item.id}`,
+      name: item.itemName,
+      unit: item.unit,
+      price: item.unitPrice,
+      category: item.category,
+      contractItemId: item.id,
+      source: "계약단가" as const,
+    }));
+
+    const unmatchedOptions = unmatchedItems.map((item, idx) => ({
+      key: `unmatched-${idx}`,
+      name: item.itemName,
+      unit: item.unit,
+      price: item.unitPrice,
+      category: undefined,
+      contractItemId: null,
+      source: "미등록" as const,
+    }));
+
+    return [...contractOptions, ...unmatchedOptions];
+  }, [contractItems, unmatchedItems]);
+
   const readOnly = status === "CONFIRMED";
+
+  function handleSelectSearchItem(selected: {
+    name: string;
+    unit: string;
+    price: number;
+    category?: CategoryCode;
+    contractItemId: string | null;
+    source: "계약단가" | "미등록";
+  }) {
+    let targetKey = activeRowKey;
+    let targetRow = rows.find((r) => r.key === targetKey);
+
+    if (!targetKey || !targetRow || targetRow.itemName.trim() !== "") {
+      const newRowObj = emptyRow();
+      setRows((prev) => [...prev, newRowObj]);
+      targetKey = newRowObj.key;
+      targetRow = newRowObj;
+    }
+
+    setRows((prev) =>
+      prev.map((r) => {
+        if (r.key !== targetKey) return r;
+
+        const quantityNum = Number(r.quantity) || 1;
+        const amount = quantityNum * selected.price;
+        const expectedTax = taxType === "TAXABLE" ? computeTaxAmount(amount) : 0;
+
+        return {
+          ...r,
+          itemName: selected.name,
+          category: selected.category ?? "",
+          unit: selected.unit,
+          quantity: String(quantityNum),
+          unitPrice: String(selected.price),
+          taxAmount: taxType === "TAXABLE" ? String(expectedTax) : "",
+          matchedContractItemId: selected.contractItemId,
+          matchType: selected.source === "계약단가" ? ("EXACT" as const) : ("NONE" as const),
+          priceOverridden: false,
+          suggestion: null,
+        };
+      })
+    );
+
+    setActiveRowKey(targetKey);
+  }
 
   function updateRow(key: string, patch: Partial<Row>) {
     setRows((prev) => prev.map((r) => (r.key === key ? { ...r, ...patch } : r)));
@@ -338,257 +419,280 @@ export default function SlipItemsTable({
     return isPriceDiff || isUnitDiff;
   });
 
+  const filteredSearchItems = useMemo(() => {
+    if (!searchQuery.trim()) {
+      return searchPool.slice(0, 20);
+    }
+    const q = searchQuery.toLowerCase();
+    return searchPool.filter((item) => item.name.toLowerCase().includes(q)).slice(0, 30);
+  }, [searchPool, searchQuery]);
+
   return (
-    <div className="space-y-4">
-      {!readOnly && (
-        <div className="rounded-md border border-gray-200 bg-white p-4 shadow-sm">
-          <div className="flex items-center justify-between border-b pb-2 mb-3">
-            <span className="text-xs font-bold text-gray-700">엑셀 업로드 (.xlsx)</span>
-            <div className="flex gap-3 text-xs">
-              <a href="/api/templates/slip-excel?taxType=TAXABLE" className="text-primary-600 hover:underline">
-                과세 양식 다운로드
-              </a>
-              <span className="text-gray-300">|</span>
-              <a href="/api/templates/slip-excel?taxType=EXEMPT" className="text-primary-600 hover:underline">
-                면세 양식 다운로드
-              </a>
+    <div className="lg:grid lg:grid-cols-4 lg:gap-4 space-y-4 lg:space-y-0">
+      {/* 왼쪽 메인 입력 폼 영역 */}
+      <div className="lg:col-span-3 space-y-4">
+        {!readOnly && (
+          <div className="rounded-md border border-gray-200 bg-white p-4 shadow-sm">
+            <div className="flex items-center justify-between border-b pb-2 mb-3">
+              <span className="text-xs font-bold text-gray-700">엑셀 업로드 (.xlsx)</span>
+              <div className="flex gap-3 text-xs">
+                <a href="/api/templates/slip-excel?taxType=TAXABLE" className="text-primary-600 hover:underline">
+                  과세 양식 다운로드
+                </a>
+                <span className="text-gray-300">|</span>
+                <a href="/api/templates/slip-excel?taxType=EXEMPT" className="text-primary-600 hover:underline">
+                  면세 양식 다운로드
+                </a>
+              </div>
             </div>
+            
+            <div className="flex items-center gap-3">
+              <input
+                type="file"
+                ref={fileInputRef}
+                accept=".xlsx"
+                disabled={importPending}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    void handleExcelUpload(file);
+                  }
+                  e.target.value = "";
+                }}
+                className="hidden"
+              />
+              <button
+                type="button"
+                disabled={importPending}
+                onClick={() => fileInputRef.current?.click()}
+                className="flex items-center gap-1.5 rounded bg-primary-600 px-3.5 py-2 text-xs font-semibold text-white shadow-sm hover:bg-primary-700 disabled:opacity-50 transition cursor-pointer"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                </svg>
+                엑셀 파일 선택
+              </button>
+              <span className="text-xs text-gray-500">
+                {importPending
+                  ? "불러오는 중..."
+                  : selectedFileName
+                  ? `선택됨: ${selectedFileName}`
+                  : "선택된 파일 없음"}
+              </span>
+            </div>
+            {importNote && <p className="mt-1 text-xs text-gray-500">{importNote}</p>}
           </div>
-          
-          <div className="flex items-center gap-3">
-            <input
-              type="file"
-              ref={fileInputRef}
-              accept=".xlsx"
-              disabled={importPending}
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) {
-                  void handleExcelUpload(file);
-                }
-                e.target.value = "";
-              }}
-              className="hidden"
-            />
-            <button
-              type="button"
-              disabled={importPending}
-              onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-1.5 rounded bg-primary-600 px-3.5 py-2 text-xs font-semibold text-white shadow-sm hover:bg-primary-700 disabled:opacity-50 transition cursor-pointer"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-              </svg>
-              엑셀 파일 선택
-            </button>
-            <span className="text-xs text-gray-500">
-              {importPending
-                ? "불러오는 중..."
-                : selectedFileName
-                ? `선택됨: ${selectedFileName}`
-                : "선택된 파일 없음"}
-            </span>
-          </div>
-          {importNote && <p className="mt-1 text-xs text-gray-500">{importNote}</p>}
-        </div>
-      )}
+        )}
 
-      <div className="overflow-x-auto rounded-md border border-gray-200 bg-white">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50 text-left text-xs font-medium text-gray-500">
-            <tr>
-              <th className="px-2 py-2">품명</th>
-              <th className="px-2 py-2">단위</th>
-              <th className="px-2 py-2">수량</th>
-              <th className="px-2 py-2">단가</th>
-              <th className="px-2 py-2">금액</th>
-              {taxType === "TAXABLE" && <th className="px-2 py-2">세액</th>}
-              <th className="px-2 py-2" />
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {rows.map((row) => {
-              const contractItem = contractItems.find((c) => c.id === row.matchedContractItemId);
-              const isPriceDiff = contractItem && String(contractItem.unitPrice) !== row.unitPrice;
-              const isUnitDiff = contractItem && normalize(contractItem.unit) !== normalize(row.unit);
-              const amount = (Number(row.quantity) || 0) * (Number(row.unitPrice) || 0);
-              const expectedTax = computeTaxAmount(amount);
-              const isTaxDiff = taxType === "TAXABLE" && (Number(row.taxAmount) || 0) !== expectedTax;
+        <div className="overflow-x-auto rounded-md border border-gray-200 bg-white">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 text-left text-xs font-medium text-gray-500">
+              <tr>
+                <th className="px-2 py-2">품명</th>
+                <th className="px-2 py-2">단위</th>
+                <th className="px-2 py-2">수량</th>
+                <th className="px-2 py-2">단가</th>
+                <th className="px-2 py-2">금액</th>
+                {taxType === "TAXABLE" && <th className="px-2 py-2">세액</th>}
+                <th className="px-2 py-2" />
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {rows.map((row) => {
+                const contractItem = contractItems.find((c) => c.id === row.matchedContractItemId);
+                const isPriceDiff = contractItem && String(contractItem.unitPrice) !== row.unitPrice;
+                const isUnitDiff = contractItem && normalize(contractItem.unit) !== normalize(row.unit);
+                const amount = (Number(row.quantity) || 0) * (Number(row.unitPrice) || 0);
+                const expectedTax = computeTaxAmount(amount);
+                const isTaxDiff = taxType === "TAXABLE" && (Number(row.taxAmount) || 0) !== expectedTax;
 
-              return (
-                <tr key={row.key} className="align-top">
-                  <td className="px-2 py-2">
-                    <input
-                      value={row.itemName}
-                      disabled={readOnly}
-                      onChange={(e) => updateRow(row.key, { itemName: e.target.value })}
-                      onBlur={(e) => handleItemNameBlur(row.key, e.target.value)}
-                      className="w-40 rounded border border-gray-300 px-2 py-1 text-sm disabled:bg-gray-100"
-                    />
-                    {row.matchType === "EXACT" && (
-                      <p className="mt-1 text-xs text-primary-600">계약단가 적용</p>
-                    )}
-                    {row.matchType === "FUZZY_CONFIRMED" && (
-                      <p className="mt-1 text-xs text-primary-600">유사품목 확인 · 계약단가 적용</p>
-                    )}
-                    {row.matchType === "NONE" && !row.suggestion && row.itemName.trim() && (
-                      <p className="mt-1 text-xs text-gray-500">수기 입력</p>
-                    )}
-                    {row.suggestion && (
-                      <div className="mt-1 rounded border border-amber-300 bg-amber-50 px-2 py-1 text-xs text-amber-800">
-                        <p>혹시 &apos;{row.suggestion.item.itemName}&apos; 아닌가요?</p>
-                        <div className="mt-1 flex gap-2">
-                          <button
-                            type="button"
-                            onClick={() => acceptSuggestion(row.key)}
-                            className="rounded bg-amber-600 px-2 py-0.5 text-white hover:bg-amber-700"
-                          >
-                            예
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => rejectSuggestion(row.key)}
-                            className="rounded border border-amber-400 px-2 py-0.5 text-amber-700 hover:bg-amber-100"
-                          >
-                            아니오
-                          </button>
+                return (
+                  <tr key={row.key} className="align-top">
+                    <td className="px-2 py-2">
+                      <input
+                        value={row.itemName}
+                        disabled={readOnly}
+                        onChange={(e) => updateRow(row.key, { itemName: e.target.value })}
+                        onBlur={(e) => handleItemNameBlur(row.key, e.target.value)}
+                        onFocus={() => setActiveRowKey(row.key)}
+                        className={`w-40 rounded border px-2 py-1 text-sm disabled:bg-gray-100 ${
+                          activeRowKey === row.key ? "border-primary-500 ring-1 ring-primary-500" : "border-gray-300"
+                        }`}
+                      />
+                      {row.matchType === "EXACT" && (
+                        <p className="mt-1 text-xs text-primary-600">계약단가 적용</p>
+                      )}
+                      {row.matchType === "FUZZY_CONFIRMED" && (
+                        <p className="mt-1 text-xs text-primary-600">유사품목 확인 · 계약단가 적용</p>
+                      )}
+                      {row.matchType === "NONE" && !row.suggestion && row.itemName.trim() && (
+                        <p className="mt-1 text-xs text-gray-500">수기 입력</p>
+                      )}
+                      {row.suggestion && (
+                        <div className="mt-1 rounded border border-amber-300 bg-amber-50 px-2 py-1 text-xs text-amber-800">
+                          <p>혹시 &apos;{row.suggestion.item.itemName}&apos; 아닌가요?</p>
+                          <div className="mt-1 flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => acceptSuggestion(row.key)}
+                              className="rounded bg-amber-600 px-2 py-0.5 text-white hover:bg-amber-700"
+                            >
+                              예
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => rejectSuggestion(row.key)}
+                              className="rounded border border-amber-400 px-2 py-0.5 text-amber-700 hover:bg-amber-100"
+                            >
+                              아니오
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    )}
-                  </td>
-                  <td className="px-2 py-2">
-                    <input
-                      value={row.unit}
-                      disabled={readOnly}
-                      onChange={(e) => updateRow(row.key, { unit: e.target.value })}
-                      className={`w-16 rounded border px-2 py-1 text-sm disabled:bg-gray-100 ${
-                        isUnitDiff ? "border-red-400 bg-red-50" : "border-gray-300"
-                      }`}
-                    />
-                    {isUnitDiff && <p className="mt-1 text-xs text-red-600">계약과 다름</p>}
-                  </td>
-                  <td className="px-2 py-2">
-                    <input
-                      type="number"
-                      value={row.quantity}
-                      disabled={readOnly}
-                      onChange={(e) => handleQuantityChange(row.key, e.target.value)}
-                      className="w-20 rounded border border-gray-300 px-2 py-1 text-sm disabled:bg-gray-100"
-                    />
-                  </td>
-                  <td className="px-2 py-2">
-                    <input
-                      type="number"
-                      value={row.unitPrice}
-                      disabled={readOnly}
-                      onChange={(e) => handlePriceChange(row.key, e.target.value)}
-                      className={`w-24 rounded border px-2 py-1 text-sm disabled:bg-gray-100 ${
-                        isPriceDiff ? "border-red-400 bg-red-50" : "border-gray-300"
-                      }`}
-                    />
-                    {isPriceDiff && <p className="mt-1 text-xs text-red-600">계약단가와 다름</p>}
-                  </td>
-                  <td className="px-2 py-2 text-gray-700">{amount.toLocaleString()}</td>
-                  {taxType === "TAXABLE" && (
+                      )}
+                    </td>
+                    <td className="px-2 py-2">
+                      <input
+                        value={row.unit}
+                        disabled={readOnly}
+                        onChange={(e) => updateRow(row.key, { unit: e.target.value })}
+                        className={`w-16 rounded border px-2 py-1 text-sm disabled:bg-gray-100 ${
+                          isUnitDiff ? "border-red-400 bg-red-50" : "border-gray-300"
+                        }`}
+                      />
+                      {isUnitDiff && <p className="mt-1 text-xs text-red-600">계약과 다름</p>}
+                    </td>
                     <td className="px-2 py-2">
                       <input
                         type="number"
-                        value={row.taxAmount}
+                        value={row.quantity}
                         disabled={readOnly}
-                        onChange={(e) => handleTaxAmountChange(row.key, e.target.value)}
+                        onChange={(e) => handleQuantityChange(row.key, e.target.value)}
+                        className="w-20 rounded border border-gray-300 px-2 py-1 text-sm disabled:bg-gray-100"
+                      />
+                    </td>
+                    <td className="px-2 py-2">
+                      <input
+                        type="number"
+                        value={row.unitPrice}
+                        disabled={readOnly}
+                        onChange={(e) => handlePriceChange(row.key, e.target.value)}
                         className={`w-24 rounded border px-2 py-1 text-sm disabled:bg-gray-100 ${
-                          isTaxDiff ? "border-red-400 bg-red-50" : "border-gray-300"
+                          isPriceDiff ? "border-red-400 bg-red-50" : "border-gray-300"
                         }`}
                       />
-                      {isTaxDiff && <p className="mt-1 text-xs text-red-600">확인필요</p>}
+                      {isPriceDiff && <p className="mt-1 text-xs text-red-600">계약단가와 다름</p>}
                     </td>
-                  )}
-                  <td className="px-2 py-2">
-                    {!readOnly && (
-                      <button
-                        type="button"
-                        onClick={() => removeRow(row.key)}
-                        className="text-xs text-red-500 hover:underline"
-                      >
-                        삭제
-                      </button>
+                    <td className="px-2 py-2 text-gray-700">{amount.toLocaleString()}</td>
+                    {taxType === "TAXABLE" && (
+                      <td className="px-2 py-2">
+                        <input
+                          type="number"
+                          value={row.taxAmount}
+                          disabled={readOnly}
+                          onChange={(e) => handleTaxAmountChange(row.key, e.target.value)}
+                          className={`w-24 rounded border px-2 py-1 text-sm disabled:bg-gray-100 ${
+                            isTaxDiff ? "border-red-400 bg-red-50" : "border-gray-300"
+                          }`}
+                        />
+                        {isTaxDiff && <p className="mt-1 text-xs text-red-600">확인필요</p>}
+                      </td>
                     )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                    <td className="px-2 py-2">
+                      {!readOnly && (
+                        <button
+                          type="button"
+                          onClick={() => removeRow(row.key)}
+                          className="text-xs text-red-500 hover:underline"
+                        >
+                          삭제
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        {!readOnly && (
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => addRows(1)}
+              className="rounded border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 cursor-pointer"
+            >
+              + 1줄 추가
+            </button>
+            <button
+              type="button"
+              onClick={() => addRows(5)}
+              className="rounded border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 cursor-pointer"
+            >
+              + 5줄 추가
+            </button>
+            <button
+              type="button"
+              onClick={() => addRows(10)}
+              className="rounded border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 cursor-pointer"
+            >
+              + 10줄 추가
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (confirm("입력한 내용을 모두 초기화하시겠습니까?")) {
+                  setRows([emptyRow()]);
+                  setImportNote(null);
+                  setMessage(null);
+                }
+              }}
+              className="ml-auto rounded border border-red-300 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 cursor-pointer"
+            >
+              입력 초기화
+            </button>
+          </div>
+        )}
+
+        <p className="text-sm font-medium text-gray-900">
+          합계금액(공급가액): {total.toLocaleString()}원
+          {taxType === "TAXABLE" && (
+            <>
+              {" · "}세액 합계: {totalTax.toLocaleString()}원 · 총액: {(total + totalTax).toLocaleString()}원
+            </>
+          )}
+        </p>
+
+        {message && (
+          <p className={`text-sm ${message.type === "error" ? "text-red-600" : "text-green-600"}`}>{message.text}</p>
+        )}
+
+        {hasMismatch && !readOnly && (
+          <p className="text-sm font-medium text-red-600">⚠️ 계약 내용과 다른 항목(빨간색 표시)을 계약과 동일하게 수정해야 저장할 수 있습니다.</p>
+        )}
+
+        {!readOnly && (
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={handleSaveDraft}
+              disabled={pending || hasMismatch}
+              className="rounded border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 cursor-pointer"
+            >
+              임시저장
+            </button>
+            <button
+              type="button"
+              onClick={handleConfirm}
+              disabled={pending || hasMismatch}
+              className="rounded bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50 cursor-pointer"
+            >
+              확정
+            </button>
+          </div>
+        )}
       </div>
 
-      {!readOnly && (
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => addRows(1)}
-            className="rounded border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
-          >
-            + 1줄 추가
-          </button>
-          <button
-            type="button"
-            onClick={() => addRows(5)}
-            className="rounded border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
-          >
-            + 5줄 추가
-          </button>
-          <button
-            type="button"
-            onClick={() => addRows(10)}
-            className="rounded border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
-          >
-            + 10줄 추가
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              if (confirm("입력한 내용을 모두 초기화하시겠습니까?")) {
-                setRows([emptyRow()]);
-                setImportNote(null);
-                setMessage(null);
-              }
-            }}
-            className="ml-auto rounded border border-red-300 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50"
-          >
-            입력 초기화
-          </button>
-        </div>
-      )}
-
-      <p className="text-sm font-medium text-gray-900">
-        합계금액(공급가액): {total.toLocaleString()}원
-        {taxType === "TAXABLE" && (
-          <>
-            {" · "}세액 합계: {totalTax.toLocaleString()}원 · 총액: {(total + totalTax).toLocaleString()}원
-          </>
-        )}
-      </p>
-
-      {message && (
-        <p className={`text-sm ${message.type === "error" ? "text-red-600" : "text-green-600"}`}>{message.text}</p>
-      )}
-
-      {hasMismatch && !readOnly && (
-        <p className="text-sm font-medium text-red-600">⚠️ 계약 내용과 다른 항목(빨간색 표시)을 계약과 동일하게 수정해야 저장할 수 있습니다.</p>
-      )}
-
-      {!readOnly && (
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={handleSaveDraft}
-            disabled={pending || hasMismatch}
-            className="rounded border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-          >
-            임시저장
-          </button>
-          <button
-            type="button"
             onClick={handleConfirm}
             disabled={pending || hasMismatch}
             className="rounded bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
