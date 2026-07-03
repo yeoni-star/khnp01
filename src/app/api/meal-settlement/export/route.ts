@@ -61,13 +61,13 @@ export async function GET(request: NextRequest) {
     })),
   });
 
-  // Use a safe ascii filename as fallback, and proper format for UTF-8 filename
-  const encodedName = encodeURIComponent(`${company.name}_식수정산_${startStr}_${endStr}.xlsx`);
+  // Safe ASCII filename to ensure the browser keeps the .xlsx extension
+  const safeFilename = `meal_settlement_${startStr}_${endStr}.xlsx`;
 
   return new NextResponse(Buffer.from(buffer), {
     headers: {
       "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "Content-Disposition": `attachment; filename="meal-settlement.xlsx"; filename*=UTF-8''${encodedName}`,
+      "Content-Disposition": `attachment; filename="${safeFilename}"`,
     },
   });
 }
