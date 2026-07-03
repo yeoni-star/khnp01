@@ -692,15 +692,6 @@ export default function SlipItemsTable({
           </div>
         )}
       </div>
-
-            onClick={handleConfirm}
-            disabled={pending || hasMismatch}
-            className="rounded bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
-          >
-            확정
-          </button>
-        </div>
-      )}
     </div>
   );
 }
