@@ -1,17 +1,36 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { getSession } from "@/lib/session";
-import { getMonthRange, parseMonthParam } from "@/lib/month-range";
-import MonthCalendar from "@/components/common/MonthCalendar";
+import DateRangePicker from "@/components/common/DateRangePicker";
+
+function getKstDateRange(startStr: string, endStr: string) {
+  // Parse KST dates (UTC+9)
+  const start = new Date(`${startStr}T00:00:00+09:00`);
+  const end = new Date(`${endStr}T23:59:59.999+09:00`);
+  return { start, end };
+}
 
 export default async function MealSettlementPage({
   searchParams,
 }: {
-  searchParams: Promise<{ month?: string }>;
+  searchParams: Promise<{ start?: string; end?: string }>;
 }) {
   const sp = await searchParams;
-  const month = parseMonthParam(sp.month);
-  const { start, end } = getMonthRange(month);
+  
+  const now = new Date();
+  const kstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+  
+  const defaultStartStr = new Date(kstNow.getFullYear(), kstNow.getMonth(), 1)
+    .toISOString()
+    .slice(0, 10);
+  const defaultEndStr = new Date(kstNow.getFullYear(), kstNow.getMonth() + 1, 0)
+    .toISOString()
+    .slice(0, 10);
+
+  const startStr = sp.start || defaultStartStr;
+  const endStr = sp.end || defaultEndStr;
+
+  const { start, end } = getKstDateRange(startStr, endStr);
 
   const session = await getSession();
   const restaurant = session!.restaurant;
@@ -54,14 +73,12 @@ export default async function MealSettlementPage({
     }))
     .sort((a, b) => a.name.localeCompare(b.name, "ko"));
 
-  const markedDates = [...new Set(registrations.map((r) => r.mealDate.toISOString().slice(0, 10)))];
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-lg font-semibold text-gray-900">식수 정산</h1>
-          <p className="mt-1 text-sm text-gray-600">외부업체 식사 등록 현황을 월 단위로 집계합니다.</p>
+          <p className="mt-1 text-sm text-gray-600">외부업체 식사 등록 현황을 지정한 기간 동안 집계합니다.</p>
         </div>
         <Link
           href="/meal-settlement/companies"
@@ -71,23 +88,22 @@ export default async function MealSettlementPage({
         </Link>
       </div>
 
-      <MonthCalendar
-        basePath="/meal-settlement"
-        month={month}
-        markedDates={markedDates}
-        legendLabel="식사 등록이 있는 날짜"
+      <DateRangePicker 
+        basePath="/meal-settlement" 
+        defaultStart={startStr} 
+        defaultEnd={endStr} 
       />
 
       {summary.length === 0 ? (
         <div className="rounded-md border border-gray-200 bg-white p-8 text-center text-gray-500">
-          이번 달에 등록된 식사가 없습니다.
+          해당 기간에 등록된 식사가 없습니다.
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           {summary.map((s) => (
             <Link 
               key={s.companyId} 
-              href={`/meal-settlement/${s.companyId}?month=${month}`}
+              href={`/meal-settlement/${s.companyId}?start=${startStr}&end=${endStr}`}
               className="block rounded-lg border border-gray-200 bg-white shadow-sm overflow-hidden hover:border-primary-500 hover:ring-1 hover:ring-primary-500 transition-all cursor-pointer group"
             >
               <div className="flex items-center justify-between border-b border-gray-200 bg-gray-50 px-4 py-3 group-hover:bg-primary-50/50 transition-colors">

@@ -1,24 +1,42 @@
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { getSession } from "@/lib/session";
-import { getMonthRange, parseMonthParam } from "@/lib/month-range";
 import { RESTAURANT_LABELS, type RestaurantCode } from "@/lib/restaurants";
 import { MEAL_TYPE_LABELS, type MealTypeCode } from "@/lib/meal";
 import PrintButton from "@/components/reports/PrintButton";
 import Link from "next/link";
-import MonthCalendar from "@/components/common/MonthCalendar";
+import DateRangePicker from "@/components/common/DateRangePicker";
+
+function getKstDateRange(startStr: string, endStr: string) {
+  const start = new Date(`${startStr}T00:00:00+09:00`);
+  const end = new Date(`${endStr}T23:59:59.999+09:00`);
+  return { start, end };
+}
 
 export default async function MealCompanyDetailPage({
   params,
   searchParams,
 }: {
   params: Promise<{ companyId: string }>;
-  searchParams: Promise<{ month?: string }>;
+  searchParams: Promise<{ start?: string; end?: string }>;
 }) {
   const { companyId } = await params;
   const sp = await searchParams;
-  const month = parseMonthParam(sp.month);
-  const { start, end } = getMonthRange(month);
+  
+  const now = new Date();
+  const kstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+  
+  const defaultStartStr = new Date(kstNow.getFullYear(), kstNow.getMonth(), 1)
+    .toISOString()
+    .slice(0, 10);
+  const defaultEndStr = new Date(kstNow.getFullYear(), kstNow.getMonth() + 1, 0)
+    .toISOString()
+    .slice(0, 10);
+
+  const startStr = sp.start || defaultStartStr;
+  const endStr = sp.end || defaultEndStr;
+
+  const { start, end } = getKstDateRange(startStr, endStr);
 
   const session = await getSession();
   const company = await db.mealCompany.findUnique({ where: { id: companyId } });
@@ -43,15 +61,12 @@ export default async function MealCompanyDetailPage({
   const totalAmount = lunchTotal + dinnerTotal;
   const totalCount = lunchCount + dinnerCount;
 
-  const [y, m] = month.split("-").map(Number);
-  const titleText = `${company.name} 식수 정산 - ${y}년 ${m}월`;
-
-  const markedDates = [...new Set(registrations.map((r) => r.mealDate.toISOString().slice(0, 10)))];
+  const titleText = `${company.name} 식수 정산 (${startStr} ~ ${endStr})`;
 
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4 print:hidden">
-        <Link href={`/meal-settlement?month=${month}`} className="text-gray-500 hover:text-gray-900">
+        <Link href={`/meal-settlement?start=${startStr}&end=${endStr}`} className="text-gray-500 hover:text-gray-900">
           &larr; 목록으로
         </Link>
       </div>
@@ -61,7 +76,7 @@ export default async function MealCompanyDetailPage({
         <div className="flex gap-2">
           <PrintButton />
           <a
-            href={`/api/meal-settlement/export?companyId=${companyId}&month=${month}`}
+            href={`/api/meal-settlement/export?companyId=${companyId}&start=${startStr}&end=${endStr}`}
             className="rounded bg-primary-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-primary-700 transition-colors"
           >
             엑셀로 내보내기
@@ -71,11 +86,10 @@ export default async function MealCompanyDetailPage({
       <h1 className="hidden text-xl font-bold text-gray-900 print:block mb-4">{titleText}</h1>
 
       <div className="print:hidden">
-        <MonthCalendar
-          basePath={`/meal-settlement/${companyId}`}
-          month={month}
-          markedDates={markedDates}
-          legendLabel="식사 등록이 있는 날짜"
+        <DateRangePicker 
+          basePath={`/meal-settlement/${companyId}`} 
+          defaultStart={startStr} 
+          defaultEnd={endStr} 
         />
       </div>
 
@@ -135,7 +149,7 @@ export default async function MealCompanyDetailPage({
             {registrations.length === 0 && (
               <tr>
                 <td colSpan={7} className="px-4 py-8 text-center text-gray-400">
-                  등록된 식사가 없습니다.
+                  해당 기간에 등록된 식사가 없습니다.
                 </td>
               </tr>
             )}
