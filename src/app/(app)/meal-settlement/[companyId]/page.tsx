@@ -103,6 +103,8 @@ export default async function MealCompanyDetailPage({
           <a
             href={`/api/meal-settlement/export?companyId=${companyId}&start=${startStr}&end=${endStr}`}
             download={`meal_settlement_${startStr}_${endStr}.xlsx`}
+            target="_blank"
+            rel="noopener noreferrer"
             className="rounded bg-primary-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-primary-700 transition-colors"
           >
             엑셀로 내보내기
