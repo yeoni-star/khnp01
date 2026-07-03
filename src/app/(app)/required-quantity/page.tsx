@@ -4,6 +4,7 @@ import { getSession } from "@/lib/session";
 import { buildQuantityReport } from "@/lib/quantity-aggregate";
 import { CATEGORIES, CATEGORY_LABELS, type CategoryCode } from "@/lib/categories";
 import { TAX_TYPES, TAX_TYPE_LABELS, isTaxTypeCode } from "@/lib/tax";
+import { RESTAURANT_LABELS } from "@/lib/restaurants";
 
 function defaultRange() {
   const end = new Date();
@@ -52,6 +53,7 @@ export default async function RequiredQuantityPage({
   );
 
   const exportData = rows.map((r) => ({
+    식당: RESTAURANT_LABELS[r.restaurant],
     품명: r.itemName,
     카테고리: r.category ? CATEGORY_LABELS[r.category] : "-",
     단위: r.unit,
@@ -176,6 +178,7 @@ export default async function RequiredQuantityPage({
         <table className="w-full text-sm">
           <thead className="bg-gray-50 text-left text-xs font-medium text-gray-500">
             <tr>
+              <th className="px-4 py-2">식당</th>
               <th className="px-4 py-2">품명</th>
               <th className="px-4 py-2">카테고리</th>
               <th className="px-4 py-2">단위</th>
@@ -185,7 +188,8 @@ export default async function RequiredQuantityPage({
           </thead>
           <tbody className="divide-y divide-gray-100">
             {rows.map((row) => (
-              <tr key={`${row.itemName}-${row.unit}-${row.taxType}`}>
+              <tr key={`${row.itemName}-${row.unit}-${row.taxType}-${row.restaurant}`}>
+                <td className="px-4 py-2 text-gray-600">{RESTAURANT_LABELS[row.restaurant]}</td>
                 <td className="px-4 py-2 font-medium text-gray-900">{row.itemName}</td>
                 <td className="px-4 py-2 text-gray-600">{row.category ? CATEGORY_LABELS[row.category] : "-"}</td>
                 <td className="px-4 py-2 text-gray-600">{row.unit}</td>
@@ -195,7 +199,7 @@ export default async function RequiredQuantityPage({
             ))}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-6 text-center text-gray-400">
+                <td colSpan={6} className="px-4 py-6 text-center text-gray-400">
                   해당 기간에 확정된 납품 내역이 없습니다.
                 </td>
               </tr>
