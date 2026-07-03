@@ -203,15 +203,15 @@ export async function GET(request: NextRequest) {
       summaryLabel.alignment = { horizontal: "center", vertical: "middle" };
       summaryLabel.fill = HEADER_FILL;
 
-      // 소요수량 합계
-      sheet.getCell(summaryRow, 4).value = { formula: `SUM(D7:D${summaryRow - 1})` };
+      // 소요수량 합계 (데이터는 8행부터 시작)
+      sheet.getCell(summaryRow, 4).value = { formula: `SUM(D${dataStartRow}:D${summaryRow - 1})` };
       sheet.getCell(summaryRow, 4).alignment = { horizontal: "right", vertical: "middle" };
       sheet.getCell(summaryRow, 4).font = { bold: true };
       sheet.getCell(summaryRow, 4).numFmt = "#,##0.##";
       sheet.getCell(summaryRow, 4).fill = HEADER_FILL;
 
       // 공급가액 합계 (E열)
-      sheet.getCell(summaryRow, 5).value = { formula: `SUM(E7:E${summaryRow - 1})` };
+      sheet.getCell(summaryRow, 5).value = { formula: `SUM(E${dataStartRow}:E${summaryRow - 1})` };
       sheet.getCell(summaryRow, 5).alignment = { horizontal: "right", vertical: "middle" };
       sheet.getCell(summaryRow, 5).font = { bold: true };
       sheet.getCell(summaryRow, 5).numFmt = "#,##0";
@@ -219,14 +219,14 @@ export async function GET(request: NextRequest) {
 
       if (taxType === "TAXABLE") {
         // 세액 합계 (F열)
-        sheet.getCell(summaryRow, 6).value = { formula: `SUM(F7:F${summaryRow - 1})` };
+        sheet.getCell(summaryRow, 6).value = { formula: `SUM(F${dataStartRow}:F${summaryRow - 1})` };
         sheet.getCell(summaryRow, 6).alignment = { horizontal: "right", vertical: "middle" };
         sheet.getCell(summaryRow, 6).font = { bold: true };
         sheet.getCell(summaryRow, 6).numFmt = "#,##0";
         sheet.getCell(summaryRow, 6).fill = HEADER_FILL;
 
         // 총액 합계 (G열)
-        sheet.getCell(summaryRow, 7).value = { formula: `SUM(G7:G${summaryRow - 1})` };
+        sheet.getCell(summaryRow, 7).value = { formula: `SUM(G${dataStartRow}:G${summaryRow - 1})` };
         sheet.getCell(summaryRow, 7).alignment = { horizontal: "right", vertical: "middle" };
         sheet.getCell(summaryRow, 7).font = { bold: true };
         sheet.getCell(summaryRow, 7).numFmt = "#,##0";
