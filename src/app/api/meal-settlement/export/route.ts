@@ -88,6 +88,17 @@ export async function GET(request: NextRequest) {
     }));
 
   const monthLabel = `${startStr} ~ ${endStr}`;
+  const detailRows = registrations.map(r => ({
+    mealDate: r.mealDate.toISOString().slice(0, 10),
+    mealTypeLabel: r.mealType === "LUNCH" ? "중식" : "석식",
+    restaurantLabel: r.restaurant === "MAIN" ? "본관" : "후문",
+    submitterName: r.submitterName,
+    phone: r.phone,
+    submittedAt: r.submittedAt.toLocaleString("ko-KR", { 
+      year: 'numeric', month: '2-digit', day: '2-digit', 
+      hour: '2-digit', minute:'2-digit', second:'2-digit' 
+    }),
+  }));
 
   const buffer = await buildMealSettlementWorkbook({
     companyName: company.name,
@@ -95,7 +106,8 @@ export async function GET(request: NextRequest) {
     pricePerMeal: company.pricePerMeal,
     totalLunchCount,
     totalDinnerCount,
-    rows: userStats,
+    summaryRows: userStats,
+    detailRows,
   });
 
   // Safe ASCII filename to ensure the browser keeps the .xlsx extension

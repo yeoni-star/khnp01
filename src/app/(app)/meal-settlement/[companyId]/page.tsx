@@ -42,42 +42,18 @@ export default async function MealCompanyDetailPage({
 
   const registrations = await db.mealRegistration.findMany({
     where: { restaurant: session!.restaurant, companyId, mealDate: { gte: start, lte: end } },
-    orderBy: [{ mealDate: "asc" }, { submittedAt: "asc" }],
+    orderBy: [{ submitterName: "asc" }, { phone: "asc" }, { mealDate: "asc" }, { submittedAt: "asc" }],
   });
 
   let lunchCount = 0;
   let dinnerCount = 0;
-  const userMap = new Map<string, {
-    name: string;
-    phone: string;
-    lunchCount: number;
-    dinnerCount: number;
-    details: string[];
-  }>();
 
   for (const r of registrations) {
-    const key = `${r.submitterName}_${r.phone}`;
-    const entry = userMap.get(key) ?? {
-      name: r.submitterName,
-      phone: r.phone,
-      lunchCount: 0,
-      dinnerCount: 0,
-      details: [],
-    };
-    
-    const dateStr = r.mealDate.toISOString().slice(0, 10);
-    const mmdd = dateStr.slice(5, 10).replace("-", ".");
-    const typeLabel = r.mealType === "LUNCH" ? "중" : "석";
-    entry.details.push(`${mmdd}(${typeLabel})`);
-
     if (r.mealType === "LUNCH") {
       lunchCount++;
-      entry.lunchCount++;
     } else {
       dinnerCount++;
-      entry.dinnerCount++;
     }
-    userMap.set(key, entry);
   }
 
   const price = company.pricePerMeal;
@@ -85,15 +61,6 @@ export default async function MealCompanyDetailPage({
   const dinnerTotal = dinnerCount * price;
   const totalAmount = lunchTotal + dinnerTotal;
   const totalCount = lunchCount + dinnerCount;
-
-  const userStats = [...userMap.values()]
-    .sort((a, b) => a.name.localeCompare(b.name, "ko"))
-    .map(u => ({
-      ...u,
-      totalCount: u.lunchCount + u.dinnerCount,
-      totalAmount: (u.lunchCount + u.dinnerCount) * price,
-      detailStr: u.details.join(", ")
-    }));
 
   const titleText = `${company.name} 식수 정산 (${startStr} ~ ${endStr})`;
 
@@ -160,29 +127,34 @@ export default async function MealCompanyDetailPage({
               <th className="px-4 py-3 w-16 text-center">번호</th>
               <th className="px-4 py-3 whitespace-nowrap">이름</th>
               <th className="px-4 py-3 whitespace-nowrap">연락처</th>
-              <th className="px-4 py-3 min-w-[200px]">이용 상세내역</th>
-              <th className="px-4 py-3 text-center whitespace-nowrap">중식</th>
-              <th className="px-4 py-3 text-center whitespace-nowrap">석식</th>
-              <th className="px-4 py-3 text-center whitespace-nowrap">총건수</th>
-              <th className="px-4 py-3 text-right whitespace-nowrap">정산 합계</th>
+              <th className="px-4 py-3 whitespace-nowrap">날짜</th>
+              <th className="px-4 py-3 text-center whitespace-nowrap">구분</th>
+              <th className="px-4 py-3 whitespace-nowrap">식당</th>
+              <th className="px-4 py-3 whitespace-nowrap">제출시각</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {userStats.map((u, i) => (
-              <tr key={`${u.name}_${u.phone}`} className="hover:bg-gray-50 transition-colors">
+            {registrations.map((r, i) => (
+              <tr key={r.id} className="hover:bg-gray-50 transition-colors">
                 <td className="px-4 py-3 text-gray-600 text-center">{i + 1}</td>
-                <td className="px-4 py-3 text-gray-900 font-medium whitespace-nowrap">{u.name}</td>
-                <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{u.phone}</td>
-                <td className="px-4 py-3 text-gray-500 text-xs leading-relaxed">{u.detailStr}</td>
-                <td className="px-4 py-3 text-gray-600 text-center">{u.lunchCount}회</td>
-                <td className="px-4 py-3 text-gray-600 text-center">{u.dinnerCount}회</td>
-                <td className="px-4 py-3 text-gray-900 font-medium text-center">{u.totalCount}건</td>
-                <td className="px-4 py-3 text-gray-900 font-semibold text-right">{u.totalAmount.toLocaleString()}원</td>
+                <td className="px-4 py-3 text-gray-900 font-medium whitespace-nowrap">{r.submitterName}</td>
+                <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{r.phone}</td>
+                <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{r.mealDate.toISOString().slice(0, 10)}</td>
+                <td className="px-4 py-3 text-gray-900 text-center font-medium">
+                  {r.mealType === "LUNCH" ? "중식" : "석식"}
+                </td>
+                <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{r.restaurant === "MAIN" ? "본관" : "후문"}</td>
+                <td className="px-4 py-3 text-gray-500 text-xs">
+                  {r.submittedAt.toLocaleString("ko-KR", { 
+                    year: 'numeric', month: '2-digit', day: '2-digit', 
+                    hour: '2-digit', minute:'2-digit', second:'2-digit' 
+                  })}
+                </td>
               </tr>
             ))}
-            {userStats.length === 0 && (
+            {registrations.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={7} className="px-4 py-8 text-center text-gray-400">
                   해당 기간에 등록된 식사가 없습니다.
                 </td>
               </tr>
