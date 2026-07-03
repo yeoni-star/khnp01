@@ -16,13 +16,13 @@ const MIN_COL_WIDTH = 24;
 type FixedColumn = "no" | "name" | "unit" | "qty" | "price" | "amount" | "tax";
 
 const DEFAULT_COL_WIDTHS: Record<FixedColumn, number> = {
-  no: 48,
-  name: 180,
-  unit: 48,
-  qty: 48,
-  price: 80,
-  amount: 96,
-  tax: 80,
+  no: 40,
+  name: 140,
+  unit: 40,
+  qty: 40,
+  price: 70,
+  amount: 80,
+  tax: 70,
 };
 
 function ColumnHeaderLabel({
