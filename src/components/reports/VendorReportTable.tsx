@@ -5,11 +5,6 @@ import PrintButton from "./PrintButton";
 import type { VendorReport, VendorReportItemRow } from "@/lib/vendor-report";
 import { TAX_TYPE_LABELS } from "@/lib/tax";
 
-function formatReportIssueDate(year: number, month: number): string {
-  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
-  return `${String(year).slice(-2)}.${month}.${lastDay}`;
-}
-
 const WIDTH_STEP = 8;
 const MIN_COL_WIDTH = 24;
 
@@ -61,15 +56,19 @@ export default function VendorReportTable({
   vendorId,
   vendorName,
   categoryLabel,
-  year,
-  month,
+  periodLabel,
+  startStr,
+  endStr,
+  categoriesParam,
   report,
 }: {
   vendorId: string;
   vendorName: string;
   categoryLabel: string | null;
-  year: number;
-  month: number;
+  periodLabel: string;
+  startStr: string;
+  endStr: string;
+  categoriesParam?: string;
   report: VendorReport;
 }) {
   const [emptyRowCount, setEmptyRowCount] = useState(0);
@@ -216,7 +215,7 @@ export default function VendorReportTable({
           </button>
           <PrintButton />
           <a
-            href={`/api/reports/vendor-export?vendorId=${vendorId}&year=${year}&month=${month}`}
+            href={`/api/reports/vendor-export?vendorId=${vendorId}&start=${startStr}&end=${endStr}${categoriesParam ? `&categories=${encodeURIComponent(categoriesParam)}` : ""}`}
             className="rounded bg-primary-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-primary-700"
           >
             엑셀로 내보내기
@@ -236,7 +235,7 @@ export default function VendorReportTable({
                 {categoryLabel ? `(${categoryLabel})` : ""}
               </p>
               <p>
-                <span className="inline-block w-20 tracking-[0.5em]">일자</span>: &nbsp; {formatReportIssueDate(year, month)}
+                <span className="inline-block w-20 tracking-[0.5em]">일자</span>: &nbsp; {periodLabel}
               </p>
             </div>
             <table className="border-collapse text-center text-xs">

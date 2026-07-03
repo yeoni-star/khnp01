@@ -27,7 +27,7 @@ export default async function DashboardPage() {
   const quickLinks = [
     { label: "새 거래명세표 입력", href: "/slips/new" },
     { label: "계약/단가표 등록", href: "/contracts/new" },
-    { label: "월별 납품보고서 보기", href: "/reports" },
+    { label: "기간별 납품보고서 보기", href: "/reports" },
     { label: "소요수량 산출", href: "/required-quantity" },
   ];
 
@@ -36,7 +36,7 @@ export default async function DashboardPage() {
       <div>
         <h1 className="text-lg font-semibold text-gray-900">대시보드</h1>
         <p className="mt-1 text-sm text-gray-600">
-          계약 관리, 거래명세표 입력, 월별 납품보고서 메뉴를 이용해 주세요.
+          계약 관리, 거래명세표 입력, 기간별 납품보고서 메뉴를 이용해 주세요.
         </p>
       </div>
 

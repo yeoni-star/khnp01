@@ -5,14 +5,20 @@ import type { SummaryReport } from "@/lib/report-aggregate";
 
 export default function SummaryReportTable({
   restaurantLabel,
-  year,
-  month,
+  periodLabel,
+  startStr,
+  endStr,
+  categoriesParam,
   report,
+  selectedVendorCount = 0,
 }: {
   restaurantLabel: string;
-  year: number;
-  month: number;
+  periodLabel: string;
+  startStr: string;
+  endStr: string;
+  categoriesParam?: string;
   report: SummaryReport;
+  selectedVendorCount?: number;
 }) {
   return (
     <div className="space-y-4">
@@ -21,7 +27,7 @@ export default function SummaryReportTable({
         <div className="flex gap-2">
           <PrintButton />
           <a
-            href={`/api/reports/summary-export?year=${year}&month=${month}`}
+            href={`/api/reports/summary-export?start=${startStr}&end=${endStr}${categoriesParam ? `&categories=${encodeURIComponent(categoriesParam)}` : ""}`}
             className="rounded bg-primary-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-primary-700"
           >
             엑셀로 내보내기
@@ -32,11 +38,16 @@ export default function SummaryReportTable({
       <div className="rounded-md border border-gray-200 bg-white p-6">
         <div className="mb-4 flex items-start justify-between">
           <div>
-            <h2 className="text-xl font-semibold text-gray-900">월별 납품보고서 (전체 통합)</h2>
+            <h2 className="text-xl font-semibold text-gray-900">기간별 납품보고서 (전체 통합)</h2>
             <p className="mt-1 text-sm text-gray-600">{restaurantLabel}</p>
             <p className="text-sm text-gray-600">
-              기간: {year}년 {month}월
+              기간: {periodLabel}
             </p>
+            {selectedVendorCount > 0 && (
+              <p className="mt-1 text-xs text-primary-600 font-medium">
+                ※ 선택된 업체 {selectedVendorCount}곳의 납품 내역만 집계됩니다.
+              </p>
+            )}
           </div>
           <table className="border-collapse text-center text-xs">
             <thead>
@@ -142,7 +153,7 @@ export default function SummaryReportTable({
         ))}
 
         {report.taxSections.length === 0 && (
-          <p className="px-2 py-6 text-center text-gray-400">해당 월에 확정된 납품 내역이 없습니다.</p>
+          <p className="px-2 py-6 text-center text-gray-400">해당 기간에 확정된 납품 내역이 없습니다.</p>
         )}
 
         {report.taxSections.length > 0 && (

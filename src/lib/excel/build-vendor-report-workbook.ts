@@ -1,5 +1,5 @@
 import ExcelJS from "exceljs";
-import { formatReportIssueDate, type VendorReport, type VendorReportItemRow } from "../vendor-report";
+import type { VendorReport, VendorReportItemRow } from "../vendor-report";
 import { TAX_TYPE_LABELS, type TaxTypeCode } from "../tax";
 
 const THIN = { style: "thin" as const };
@@ -11,11 +11,10 @@ const BASE_COL_COUNT = 7; // 번호/품명/단위/수량/단가/금액/세액
 export async function buildVendorReportWorkbook(params: {
   vendorName: string;
   categoryLabel: string | null;
-  year: number;
-  month: number;
+  periodLabel: string;
   report: VendorReport;
 }): Promise<ExcelJS.Buffer> {
-  const { vendorName, categoryLabel, year, month, report } = params;
+  const { vendorName, categoryLabel, periodLabel, report } = params;
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet("납품보고서");
 
@@ -35,7 +34,7 @@ export async function buildVendorReportWorkbook(params: {
 
   sheet.mergeCells(3, 1, 3, infoColEnd);
   const dateCell = sheet.getCell(3, 1);
-  dateCell.value = `일자 : ${formatReportIssueDate(year, month)}`;
+  dateCell.value = `일자 : ${periodLabel}`;
 
   const approvalStartCol = infoColEnd + 1;
   ["담당", "차장"].forEach((role, idx) => {

@@ -8,17 +8,16 @@ const HEADER_FILL: ExcelJS.Fill = { type: "pattern", pattern: "solid", fgColor: 
 
 export async function buildSummaryWorkbook(params: {
   restaurantLabel: string;
-  year: number;
-  month: number;
+  periodLabel: string;
   report: SummaryReport;
 }): Promise<ExcelJS.Buffer> {
-  const { restaurantLabel, year, month, report } = params;
+  const { restaurantLabel, periodLabel, report } = params;
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet("전체통합요약");
 
   sheet.mergeCells(1, 1, 1, 3);
   const titleCell = sheet.getCell(1, 1);
-  titleCell.value = `월별 납품보고서(전체 통합) - ${restaurantLabel} - ${year}년 ${month}월`;
+  titleCell.value = `기간별 납품보고서(전체 통합) - ${restaurantLabel} - ${periodLabel}`;
   titleCell.font = { bold: true, size: 14 };
 
   const approvalStartCol = 4;

@@ -128,19 +128,24 @@ export function aggregateSummaryReport(rows: SummaryInputRow[]): SummaryReport {
 
 export async function buildSummaryReport(
   restaurant: RestaurantCode,
-  year: number,
-  month: number
+  startDate: Date,
+  endDate: Date,
+  options?: { vendorIds?: string[]; categories?: CategoryCode[] }
 ): Promise<SummaryReport> {
-  const monthStart = new Date(Date.UTC(year, month - 1, 1));
-  const monthEnd = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999));
+  const vendorFilter =
+    options?.vendorIds && options.vendorIds.length > 0
+      ? { vendorId: { in: options.vendorIds } }
+      : {};
 
   const items = await db.deliverySlipItem.findMany({
     where: {
       slip: {
         restaurant,
         status: "CONFIRMED",
-        deliveryDate: { gte: monthStart, lte: monthEnd },
+        deliveryDate: { gte: startDate, lte: endDate },
+        ...vendorFilter,
       },
+      ...(options?.categories && options.categories.length > 0 ? { category: { in: options.categories } } : {}),
     },
     include: { slip: { include: { vendor: true } } },
   });
@@ -161,3 +166,4 @@ export async function buildSummaryReport(
 
   return aggregateSummaryReport(rows);
 }
+

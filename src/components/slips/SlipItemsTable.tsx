@@ -159,6 +159,7 @@ export default function SlipItemsTable({
   );
   const [message, setMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
   const [pending, startTransition] = useTransition();
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [importPending, setImportPending] = useState(false);
   const [importNote, setImportNote] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -397,7 +398,12 @@ export default function SlipItemsTable({
     });
   }
 
-  function handleConfirm() {
+  function handleConfirmClick() {
+    setShowConfirmDialog(true);
+  }
+
+  function handleConfirmSubmit() {
+    setShowConfirmDialog(false);
     setMessage(null);
     startTransition(async () => {
       const result = await confirmSlip(slipId, buildItemsJson());
@@ -692,12 +698,52 @@ export default function SlipItemsTable({
             </button>
             <button
               type="button"
-              onClick={handleConfirm}
+              onClick={handleConfirmClick}
               disabled={pending || hasMismatch}
               className="rounded bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50 cursor-pointer"
             >
               확정
             </button>
+          </div>
+        )}
+
+        {showConfirmDialog && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+            <div className="w-80 rounded-lg bg-white p-5 shadow-xl">
+              <p className="text-sm font-medium text-gray-900">아래 금액으로 확정하시겠습니까?</p>
+              <div className="mt-3 space-y-1 rounded border border-gray-200 bg-gray-50 p-3 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">공급가액</span>
+                  <span className="font-medium text-gray-900">{total.toLocaleString()}원</span>
+                </div>
+                {taxType === "TAXABLE" && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">세액</span>
+                    <span className="font-medium text-gray-900">{totalTax.toLocaleString()}원</span>
+                  </div>
+                )}
+                <div className="mt-1 flex justify-between border-t border-gray-200 pt-1">
+                  <span className="text-gray-600">총액</span>
+                  <span className="font-semibold text-gray-900">{(total + totalTax).toLocaleString()}원</span>
+                </div>
+              </div>
+              <div className="mt-4 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmDialog(false)}
+                  className="rounded border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer"
+                >
+                  아니오
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmSubmit}
+                  className="rounded bg-primary-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-primary-700 cursor-pointer"
+                >
+                  예
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>

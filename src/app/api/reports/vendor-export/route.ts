@@ -2,20 +2,24 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { requireSession } from "@/lib/session";
 import { db } from "@/lib/db";
-import { buildVendorReport } from "@/lib/vendor-report";
+import { buildVendorReport, formatReportPeriod } from "@/lib/vendor-report";
 import { buildVendorReportWorkbook } from "@/lib/excel/build-vendor-report-workbook";
+import { parseDateRange, parseCategories } from "@/lib/report-period";
 import { CATEGORY_LABELS } from "@/lib/categories";
 
 export async function GET(request: NextRequest) {
   const session = await requireSession();
   const { searchParams } = new URL(request.url);
   const vendorId = searchParams.get("vendorId");
-  const year = Number(searchParams.get("year"));
-  const month = Number(searchParams.get("month"));
+  const start = searchParams.get("start") ?? undefined;
+  const end = searchParams.get("end") ?? undefined;
+  const categories = parseCategories(searchParams.get("categories") ?? undefined);
 
-  if (!vendorId || !year || !month) {
+  if (!vendorId) {
     return NextResponse.json({ message: "잘못된 요청입니다." }, { status: 400 });
   }
+
+  const { startDate, endDate, startStr, endStr } = parseDateRange(start, end);
 
   const vendor = await db.vendor.findUnique({ where: { id: vendorId } });
   if (!vendor) {
@@ -23,18 +27,17 @@ export async function GET(request: NextRequest) {
   }
 
   const [report, contract] = await Promise.all([
-    buildVendorReport(session.restaurant, vendorId, year, month),
+    buildVendorReport(session.restaurant, vendorId, startDate, endDate, categories),
     db.contract.findFirst({ where: { vendorId }, orderBy: { startDate: "desc" }, select: { category: true } }),
   ]);
   const buffer = await buildVendorReportWorkbook({
     vendorName: vendor.name,
     categoryLabel: contract ? CATEGORY_LABELS[contract.category] : null,
-    year,
-    month,
+    periodLabel: formatReportPeriod(startDate, endDate),
     report,
   });
 
-  const filename = encodeURIComponent(`납품보고서_${vendor.name}_${year}-${String(month).padStart(2, "0")}.xlsx`);
+  const filename = encodeURIComponent(`납품보고서_${vendor.name}_${startStr}_${endStr}.xlsx`);
 
   return new NextResponse(Buffer.from(buffer), {
     headers: {

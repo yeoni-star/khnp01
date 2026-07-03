@@ -3,10 +3,12 @@ import type { RestaurantCode } from "./restaurants";
 import type { CategoryCode } from "./categories";
 import type { TaxTypeCode } from "./tax";
 
-/** 납품보고서 상단 "일자" 표기: 해당 월의 말일 기준 YY.M.D (예: 26.5.31) */
-export function formatReportIssueDate(year: number, month: number): string {
-  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
-  return `${String(year).slice(-2)}.${month}.${lastDay}`;
+/** 납품보고서 상단 "일자" 표기: 기간의 시작~끝을 YY.M.D 형식으로 (하루짜리 기간이면 하나만) */
+export function formatReportPeriod(startDate: Date, endDate: Date): string {
+  const fmt = (d: Date) => `${String(d.getUTCFullYear()).slice(-2)}.${d.getUTCMonth() + 1}.${d.getUTCDate()}`;
+  const start = fmt(startDate);
+  const end = fmt(endDate);
+  return start === end ? start : `${start} ~ ${end}`;
 }
 
 export type VendorReportWeek = { label: string; dates: string[] };
@@ -161,35 +163,35 @@ export function aggregateVendorReport(rows: VendorReportInputRow[]): VendorRepor
 export async function buildVendorReport(
   restaurant: RestaurantCode,
   vendorId: string,
-  year: number,
-  month: number
+  startDate: Date,
+  endDate: Date,
+  categories?: CategoryCode[]
 ): Promise<VendorReport> {
-  const monthStart = new Date(Date.UTC(year, month - 1, 1));
-  const monthEnd = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999));
-
   const slips = await db.deliverySlip.findMany({
     where: {
       restaurant,
       vendorId,
       status: "CONFIRMED",
-      deliveryDate: { gte: monthStart, lte: monthEnd },
+      deliveryDate: { gte: startDate, lte: endDate },
     },
     include: { items: true },
     orderBy: { deliveryDate: "asc" },
   });
 
   const rows: VendorReportInputRow[] = slips.flatMap((slip) =>
-    slip.items.map((item) => ({
-      deliveryDate: slip.deliveryDate,
-      itemName: item.itemName,
-      category: item.category,
-      unit: item.unit,
-      taxType: slip.taxType,
-      quantity: item.quantity,
-      unitPrice: item.unitPrice,
-      amount: item.amount,
-      taxAmount: item.taxAmount,
-    }))
+    slip.items
+      .filter((item) => !categories || (item.category !== null && categories.includes(item.category)))
+      .map((item) => ({
+        deliveryDate: slip.deliveryDate,
+        itemName: item.itemName,
+        category: item.category,
+        unit: item.unit,
+        taxType: slip.taxType,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        amount: item.amount,
+        taxAmount: item.taxAmount,
+      }))
   );
 
   return aggregateVendorReport(rows);

@@ -7,7 +7,7 @@ const NAV_ITEMS = [
   { href: "/contracts", label: "계약/단가" },
   { href: "/slips", label: "거래명세표" },
   { href: "/unmatched-items", label: "미등록 품목" },
-  { href: "/reports", label: "월별 납품보고서" },
+  { href: "/reports", label: "기간별 납품보고서" },
   { href: "/required-quantity", label: "소요수량 산출" },
 ];
 

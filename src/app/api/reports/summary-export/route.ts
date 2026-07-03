@@ -3,27 +3,31 @@ import type { NextRequest } from "next/server";
 import { requireSession } from "@/lib/session";
 import { buildSummaryReport } from "@/lib/report-aggregate";
 import { buildSummaryWorkbook } from "@/lib/excel/build-summary-workbook";
+import { formatReportPeriod } from "@/lib/vendor-report";
+import { parseDateRange, parseCategories } from "@/lib/report-period";
 import { RESTAURANT_LABELS } from "@/lib/restaurants";
 
 export async function GET(request: NextRequest) {
   const session = await requireSession();
   const { searchParams } = new URL(request.url);
-  const year = Number(searchParams.get("year"));
-  const month = Number(searchParams.get("month"));
+  const start = searchParams.get("start") ?? undefined;
+  const end = searchParams.get("end") ?? undefined;
+  const categories = parseCategories(searchParams.get("categories") ?? undefined);
+  const vendorIds = searchParams.getAll("vendorIds");
 
-  if (!year || !month) {
-    return NextResponse.json({ message: "잘못된 요청입니다." }, { status: 400 });
-  }
+  const { startDate, endDate, startStr, endStr } = parseDateRange(start, end);
 
-  const report = await buildSummaryReport(session.restaurant, year, month);
+  const report = await buildSummaryReport(session.restaurant, startDate, endDate, {
+    vendorIds: vendorIds.length > 0 ? vendorIds : undefined,
+    categories,
+  });
   const buffer = await buildSummaryWorkbook({
     restaurantLabel: RESTAURANT_LABELS[session.restaurant],
-    year,
-    month,
+    periodLabel: formatReportPeriod(startDate, endDate),
     report,
   });
 
-  const filename = encodeURIComponent(`전체통합요약_${RESTAURANT_LABELS[session.restaurant]}_${year}-${String(month).padStart(2, "0")}.xlsx`);
+  const filename = encodeURIComponent(`전체통합요약_${RESTAURANT_LABELS[session.restaurant]}_${startStr}_${endStr}.xlsx`);
 
   return new NextResponse(Buffer.from(buffer), {
     headers: {
