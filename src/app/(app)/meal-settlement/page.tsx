@@ -3,7 +3,6 @@ import { db } from "@/lib/db";
 import { getSession } from "@/lib/session";
 import { getMonthRange, parseMonthParam } from "@/lib/month-range";
 import MonthCalendar from "@/components/common/MonthCalendar";
-import { MEAL_TYPE_LABELS, type MealTypeCode } from "@/lib/meal";
 
 export default async function MealSettlementPage({
   searchParams,
@@ -20,7 +19,6 @@ export default async function MealSettlementPage({
   const registrations = await db.mealRegistration.findMany({
     where: { restaurant, mealDate: { gte: start, lte: end } },
     include: { company: true },
-    orderBy: [{ mealDate: "asc" }, { submittedAt: "asc" }],
   });
 
   const byCompany = new Map<
@@ -30,7 +28,6 @@ export default async function MealSettlementPage({
       price: number;
       lunchCount: number;
       dinnerCount: number;
-      registrations: typeof registrations;
     }
   >();
 
@@ -40,11 +37,9 @@ export default async function MealSettlementPage({
       price: r.company.pricePerMeal,
       lunchCount: 0,
       dinnerCount: 0,
-      registrations: [],
     };
     if (r.mealType === "LUNCH") entry.lunchCount += 1;
     else entry.dinnerCount += 1;
-    entry.registrations.push(r);
     byCompany.set(r.companyId, entry);
   }
 
@@ -88,76 +83,44 @@ export default async function MealSettlementPage({
           이번 달에 등록된 식사가 없습니다.
         </div>
       ) : (
-        <div className="space-y-8">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           {summary.map((s) => (
-            <div key={s.companyId} className="rounded-md border border-gray-200 bg-white shadow-sm overflow-hidden">
-              <div className="flex items-center justify-between border-b border-gray-200 bg-gray-50 px-4 py-3">
+            <Link 
+              key={s.companyId} 
+              href={`/meal-settlement/${s.companyId}?month=${month}`}
+              className="block rounded-lg border border-gray-200 bg-white shadow-sm overflow-hidden hover:border-primary-500 hover:ring-1 hover:ring-primary-500 transition-all cursor-pointer group"
+            >
+              <div className="flex items-center justify-between border-b border-gray-200 bg-gray-50 px-4 py-3 group-hover:bg-primary-50/50 transition-colors">
                 <h2 className="text-base font-bold text-gray-900">{s.name}</h2>
-                <div className="flex gap-2">
-                  <a
-                    href={`/api/meal-settlement/export?companyId=${s.companyId}&month=${month}`}
-                    className="text-sm font-medium text-primary-600 hover:underline"
-                  >
-                    엑셀 다운로드
-                  </a>
-                </div>
+                <span className="text-sm font-medium text-primary-600 flex items-center gap-1">
+                  상세내역 보기
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
+                </span>
               </div>
               
-              <div className="grid grid-cols-1 divide-y divide-gray-100 sm:grid-cols-3 sm:divide-x sm:divide-y-0 text-sm">
-                <div className="p-4 flex flex-col justify-center items-center">
-                  <span className="text-gray-500 text-xs mb-1">중식 정산</span>
-                  <span className="font-semibold text-gray-900">
-                    {s.lunchCount}명 × {s.price.toLocaleString()}원 = {s.lunchTotal.toLocaleString()}원
+              <div className="grid grid-cols-1 divide-y divide-gray-100 p-2">
+                <div className="flex justify-between items-center px-4 py-3">
+                  <span className="text-gray-500 text-sm">중식 정산</span>
+                  <span className="font-medium text-gray-900 text-sm">
+                    {s.lunchCount}명 × {s.price.toLocaleString()}원 = <span className="font-semibold">{s.lunchTotal.toLocaleString()}원</span>
                   </span>
                 </div>
-                <div className="p-4 flex flex-col justify-center items-center">
-                  <span className="text-gray-500 text-xs mb-1">석식 정산</span>
-                  <span className="font-semibold text-gray-900">
-                    {s.dinnerCount}명 × {s.price.toLocaleString()}원 = {s.dinnerTotal.toLocaleString()}원
+                <div className="flex justify-between items-center px-4 py-3">
+                  <span className="text-gray-500 text-sm">석식 정산</span>
+                  <span className="font-medium text-gray-900 text-sm">
+                    {s.dinnerCount}명 × {s.price.toLocaleString()}원 = <span className="font-semibold">{s.dinnerTotal.toLocaleString()}원</span>
                   </span>
                 </div>
-                <div className="p-4 flex flex-col justify-center items-center bg-primary-50/50">
-                  <span className="text-primary-700 text-xs font-bold mb-1">총 합계</span>
-                  <span className="font-bold text-primary-900 text-lg">
+                <div className="flex justify-between items-center px-4 py-3 bg-primary-50/30 rounded-b-md mt-1">
+                  <span className="text-primary-800 text-sm font-bold">총 합계</span>
+                  <span className="font-bold text-primary-900 text-base">
                     {s.totalCount}명 / {s.totalAmount.toLocaleString()}원
                   </span>
                 </div>
               </div>
-
-              <div className="border-t border-gray-200 overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-gray-50 text-left text-xs font-medium text-gray-500">
-                    <tr>
-                      <th className="px-4 py-2 w-16 text-center">번호</th>
-                      <th className="px-4 py-2">날짜</th>
-                      <th className="px-4 py-2">구분 (중/석)</th>
-                      <th className="px-4 py-2">이름</th>
-                      <th className="px-4 py-2">연락처</th>
-                      <th className="px-4 py-2">제출시각</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {s.registrations.map((r, i) => (
-                      <tr key={r.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-4 py-2 text-gray-600 text-center">{i + 1}</td>
-                        <td className="px-4 py-2 text-gray-600">{r.mealDate.toISOString().slice(0, 10)}</td>
-                        <td className="px-4 py-2 text-gray-900 font-medium">
-                          {MEAL_TYPE_LABELS[r.mealType as MealTypeCode] || r.mealType}
-                        </td>
-                        <td className="px-4 py-2 text-gray-900">{r.submitterName}</td>
-                        <td className="px-4 py-2 text-gray-600">{r.phone}</td>
-                        <td className="px-4 py-2 text-gray-500 text-xs">
-                          {r.submittedAt.toLocaleString("ko-KR", { 
-                            year: 'numeric', month: '2-digit', day: '2-digit', 
-                            hour: '2-digit', minute:'2-digit', second:'2-digit' 
-                          })}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            </Link>
           ))}
         </div>
       )}
