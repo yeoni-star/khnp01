@@ -89,7 +89,7 @@ export async function GET(request: NextRequest) {
 
   const monthLabel = `${startStr} ~ ${endStr}`;
   const detailRows = registrations.map(r => ({
-    mealDate: r.mealDate.toISOString().slice(0, 10),
+    mealDate: new Date(r.mealDate.getTime() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10),
     mealTypeLabel: r.mealType === "LUNCH" ? "중식" : "석식",
     restaurantLabel: r.restaurant === "MAIN" ? "본관" : "후문",
     submitterName: r.submitterName,

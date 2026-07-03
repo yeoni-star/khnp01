@@ -126,7 +126,9 @@ export default async function MealCompanyDetailPage({
                 <td className="px-4 py-3 text-gray-600 text-center">{i + 1}</td>
                 <td className="px-4 py-3 text-gray-900 font-medium whitespace-nowrap">{r.submitterName}</td>
                 <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{r.phone}</td>
-                <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{r.mealDate.toISOString().slice(0, 10)}</td>
+                <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                  {new Date(r.mealDate.getTime() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10)}
+                </td>
                 <td className="px-4 py-3 text-gray-900 text-center font-medium">
                   {r.mealType === "LUNCH" ? "중식" : "석식"}
                 </td>
