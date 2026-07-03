@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { getSession } from "@/lib/session";
+import MealTimeSettingsPanel from "@/components/meal/MealTimeSettingsPanel";
 
 export default async function DashboardPage() {
   const session = await getSession();
@@ -66,6 +67,11 @@ export default async function DashboardPage() {
             </Link>
           ))}
         </div>
+      </div>
+
+      <div>
+        <h2 className="mb-2 text-sm font-semibold text-gray-900">설정</h2>
+        <MealTimeSettingsPanel />
       </div>
     </div>
   );

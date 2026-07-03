@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { mealRegistrationSchema, determineMealType, MEAL_TIME_WINDOW_LABEL, MEAL_TYPE_LABELS } from "@/lib/meal";
+import { mealRegistrationSchema, MEAL_TYPE_LABELS } from "@/lib/meal";
 import { RESTAURANT_LABELS, type RestaurantCode } from "@/lib/restaurants";
 
 type ActionResult =
@@ -16,6 +16,18 @@ type ActionResult =
     }
   | { ok: false; message: string };
 
+/** "HH:mm" 문자열을 분(0~1439)으로 변환 */
+function timeStrToMinutes(t: string): number {
+  const [h, m] = t.split(":").map(Number);
+  return (h ?? 0) * 60 + (m ?? 0);
+}
+
+/** KST 기준 현재 시각을 분으로 반환 */
+function kstMinutesNow(now: Date): number {
+  const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+  return kst.getUTCHours() * 60 + kst.getUTCMinutes();
+}
+
 /** 비로그인 공개 폼(/meal-register)에서 호출되는 제출 액션. 인증 없이 접근 가능하다. */
 export async function submitMealRegistration(input: {
   restaurant: string;
@@ -29,14 +41,27 @@ export async function submitMealRegistration(input: {
   }
 
   const now = new Date();
-  // const mealType = determineMealType(now);
-  const mealType = "LUNCH";
-  // if (!mealType) {
-  //   return {
-  //     ok: false,
-  //     message: `지금은 식사 등록 가능 시간이 아닙니다. (${MEAL_TIME_WINDOW_LABEL})`,
-  //   };
-  // }
+
+  // DB에서 시간 설정 읽기 (없으면 기본값 사용)
+  const timeSettings = await db.mealTimeSettings.findUnique({ where: { id: "global" } });
+  const lunchStart = timeStrToMinutes(timeSettings?.lunchStart ?? "11:00");
+  const lunchEnd   = timeStrToMinutes(timeSettings?.lunchEnd   ?? "13:30");
+  const dinnerStart= timeStrToMinutes(timeSettings?.dinnerStart ?? "17:00");
+  const dinnerEnd  = timeStrToMinutes(timeSettings?.dinnerEnd   ?? "19:30");
+
+  const currentMin = kstMinutesNow(now);
+  let mealType: "LUNCH" | "DINNER" | null = null;
+  if (currentMin >= lunchStart && currentMin <= lunchEnd) mealType = "LUNCH";
+  else if (currentMin >= dinnerStart && currentMin <= dinnerEnd) mealType = "DINNER";
+
+  if (!mealType) {
+    const lunchLabel  = `${timeSettings?.lunchStart  ?? "11:00"}~${timeSettings?.lunchEnd  ?? "13:30"}`;
+    const dinnerLabel = `${timeSettings?.dinnerStart ?? "17:00"}~${timeSettings?.dinnerEnd ?? "19:30"}`;
+    return {
+      ok: false,
+      message: `지금은 식사 등록 가능 시간이 아닙니다. (중식 ${lunchLabel}, 석식 ${dinnerLabel})`,
+    };
+  }
 
   const company = await db.mealCompany.findUnique({ where: { id: parsed.data.companyId } });
   if (!company) {
@@ -65,14 +90,14 @@ export async function submitMealRegistration(input: {
       mealType,
       restaurant: parsed.data.restaurant as RestaurantCode,
       submittedAt: { lte: now },
-    }
+    },
   });
 
   return {
     ok: true,
     submittedAt: created.submittedAt.toISOString(),
     mealDate: todayStr,
-    mealTypeLabel: MEAL_TYPE_LABELS[mealType as "LUNCH" | "DINNER"],
+    mealTypeLabel: MEAL_TYPE_LABELS[mealType],
     companyName: company.name,
     restaurantLabel: RESTAURANT_LABELS[parsed.data.restaurant as RestaurantCode],
     sequenceNumber,

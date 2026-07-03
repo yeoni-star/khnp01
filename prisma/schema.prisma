@@ -214,3 +214,14 @@ model MealRegistration {
   @@index([restaurant, mealDate])
   @@index([companyId, mealDate])
 }
+
+/** 중식/석식 신청 가능 시간 설정. 전역 단일 레코드(id="global")로 관리한다.
+ * 시간은 KST 기준 "HH:mm" 문자열로 저장한다. */
+model MealTimeSettings {
+  id               String   @id @default("global")
+  lunchStart       String   @default("11:00")
+  lunchEnd         String   @default("13:30")
+  dinnerStart      String   @default("17:00")
+  dinnerEnd        String   @default("19:30")
+  updatedAt        DateTime @updatedAt
+}
