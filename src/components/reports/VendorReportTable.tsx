@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import PrintButton from "./PrintButton";
-import type { VendorReport } from "@/lib/vendor-report";
+import type { VendorReport, VendorReportItemRow } from "@/lib/vendor-report";
+import { TAX_TYPE_LABELS } from "@/lib/tax";
 
 function formatReportIssueDate(year: number, month: number): string {
   const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
@@ -12,7 +13,7 @@ function formatReportIssueDate(year: number, month: number): string {
 const WIDTH_STEP = 8;
 const MIN_COL_WIDTH = 24;
 
-type FixedColumn = "no" | "name" | "unit" | "qty" | "price" | "amount";
+type FixedColumn = "no" | "name" | "unit" | "qty" | "price" | "amount" | "tax";
 
 const DEFAULT_COL_WIDTHS: Record<FixedColumn, number> = {
   no: 48,
@@ -21,6 +22,7 @@ const DEFAULT_COL_WIDTHS: Record<FixedColumn, number> = {
   qty: 48,
   price: 80,
   amount: 96,
+  tax: 80,
 };
 
 function ColumnHeaderLabel({
@@ -117,6 +119,41 @@ export default function VendorReportTable({
 
   const dateColumns = displayWeeks.flatMap((w) => w.dates);
   const colSpanCount = dateColumns.length || 1;
+  const totalCols = 7 + colSpanCount;
+
+  function renderItemRow(item: VendorReportItemRow, index: number) {
+    return (
+      <tr key={`${item.taxType}-${item.itemName}-${item.unit}`}>
+        <td className="border border-gray-400 px-1 py-1 text-center">{index + 1}</td>
+        <td className="border border-gray-400 px-2 py-1">{item.itemName}</td>
+        <td className="border border-gray-400 px-1 py-1 text-center">{item.unit}</td>
+        <td className="border border-gray-400 px-2 py-1 text-right">{item.totalQuantity.toLocaleString()}</td>
+        <td
+          className={`border border-gray-400 px-2 py-1 text-right ${
+            item.priceVaries ? "font-semibold text-red-600" : ""
+          }`}
+          title={item.priceVaries ? "이 기간 중 단가가 달라졌습니다" : undefined}
+        >
+          {item.unitPrice.toLocaleString()}
+          {item.priceVaries && " ⚠"}
+        </td>
+        <td className="border border-gray-400 px-2 py-1 text-right">{item.totalAmount.toLocaleString()}</td>
+        <td className="border border-gray-400 px-2 py-1 text-right">
+          {item.taxType === "TAXABLE" ? item.totalTaxAmount.toLocaleString() : "-"}
+        </td>
+        {dateColumns.map((date) => (
+          <td key={date} className="border border-gray-400 px-1 py-1 text-center">
+            {!date.startsWith("empty-") && item.quantityByDate[date] ? item.quantityByDate[date].toLocaleString() : ""}
+          </td>
+        ))}
+      </tr>
+    );
+  }
+
+  const sections = [
+    { taxType: "TAXABLE" as const, items: report.taxableItems, supplySubtotal: report.taxableSupplyTotal, taxSubtotal: report.taxableTaxTotal },
+    { taxType: "EXEMPT" as const, items: report.exemptItems, supplySubtotal: report.exemptSupplyTotal, taxSubtotal: 0 },
+  ].filter((s) => s.items.length > 0);
 
   return (
     <div className="space-y-4">
@@ -266,6 +303,13 @@ export default function VendorReportTable({
                     onIncrease={() => adjustWidth("amount", WIDTH_STEP)}
                   />
                 </th>
+                <th rowSpan={3} className="border border-gray-400 px-1 py-1" style={{ width: colWidths.tax }}>
+                  <ColumnHeaderLabel
+                    label="세액"
+                    onDecrease={() => adjustWidth("tax", -WIDTH_STEP)}
+                    onIncrease={() => adjustWidth("tax", WIDTH_STEP)}
+                  />
+                </th>
                 <th colSpan={colSpanCount} className="border border-gray-400 px-2 py-1">
                   납품현황
                 </th>
@@ -298,41 +342,33 @@ export default function VendorReportTable({
               </tr>
             </thead>
             <tbody>
-              {report.items.map((item, index) => (
-                <tr key={`${item.itemName}-${item.unit}`}>
-                  <td className="border border-gray-400 px-1 py-1 text-center">{index + 1}</td>
-                  <td className="border border-gray-400 px-2 py-1">{item.itemName}</td>
-                  <td className="border border-gray-400 px-1 py-1 text-center">{item.unit}</td>
-                  <td className="border border-gray-400 px-2 py-1 text-right">
-                    {item.totalQuantity.toLocaleString()}
-                  </td>
-                  <td
-                    className={`border border-gray-400 px-2 py-1 text-right ${
-                      item.priceVaries ? "font-semibold text-red-600" : ""
-                    }`}
-                    title={item.priceVaries ? "이 기간 중 단가가 달라졌습니다" : undefined}
-                  >
-                    {item.unitPrice.toLocaleString()}
-                    {item.priceVaries && " ⚠"}
-                  </td>
-                  <td className="border border-gray-400 px-2 py-1 text-right">
-                    {item.totalAmount.toLocaleString()}
-                  </td>
-                  {dateColumns.map((date) => (
-                    <td key={date} className="border border-gray-400 px-1 py-1 text-center">
-                      {!date.startsWith("empty-") && item.quantityByDate[date]
-                        ? item.quantityByDate[date].toLocaleString()
-                        : ""}
+              {sections.map((section) => (
+                <Fragment key={section.taxType}>
+                  <tr className="bg-gray-100">
+                    <td colSpan={totalCols} className="border border-gray-400 px-2 py-1 font-semibold">
+                      {TAX_TYPE_LABELS[section.taxType]}
                     </td>
-                  ))}
-                </tr>
+                  </tr>
+                  {section.items.map((item, index) => renderItemRow(item, index))}
+                  <tr className="bg-gray-50">
+                    <td colSpan={5} className="border border-gray-400 px-2 py-1 text-right font-semibold">
+                      {TAX_TYPE_LABELS[section.taxType]} 소계
+                    </td>
+                    <td className="border border-gray-400 px-2 py-1 text-right font-semibold">
+                      {section.supplySubtotal.toLocaleString()}
+                    </td>
+                    <td className="border border-gray-400 px-2 py-1 text-right font-semibold">
+                      {section.taxType === "TAXABLE" ? section.taxSubtotal.toLocaleString() : "-"}
+                    </td>
+                    {dateColumns.map((date) => (
+                      <td key={date} className="border border-gray-400" />
+                    ))}
+                  </tr>
+                </Fragment>
               ))}
-              {report.items.length === 0 && emptyRowCount === 0 && (
+              {sections.length === 0 && emptyRowCount === 0 && (
                 <tr>
-                  <td
-                    colSpan={6 + colSpanCount}
-                    className="border border-gray-400 px-2 py-6 text-center text-gray-400"
-                  >
+                  <td colSpan={totalCols} className="border border-gray-400 px-2 py-6 text-center text-gray-400">
                     해당 기간에 확정된 납품 내역이 없습니다.
                   </td>
                 </tr>
@@ -345,19 +381,20 @@ export default function VendorReportTable({
                   <td className="border border-gray-400 px-2 py-4 text-right"></td>
                   <td className="border border-gray-400 px-2 py-4 text-right"></td>
                   <td className="border border-gray-400 px-2 py-4 text-right"></td>
+                  <td className="border border-gray-400 px-2 py-4 text-right"></td>
                   {dateColumns.map((date) => (
                     <td key={`empty-${i}-${date}`} className="border border-gray-400 px-1 py-4 text-center"></td>
                   ))}
                 </tr>
               ))}
             </tbody>
-            {report.items.length > 0 && (
+            {sections.length > 0 && (
               <tfoot>
                 <tr>
                   <td colSpan={5} className="border border-gray-400 bg-gray-50 px-2 py-1 text-center font-semibold tracking-widest">
-                    합계
+                    총 합계
                   </td>
-                  <td className="border border-gray-400 px-2 py-1 text-right font-semibold">
+                  <td colSpan={2} className="border border-gray-400 px-2 py-1 text-right font-semibold">
                     {report.grandTotal.toLocaleString()}
                   </td>
                   {dateColumns.map((date) => (
@@ -368,6 +405,13 @@ export default function VendorReportTable({
             )}
           </table>
         </div>
+
+        {sections.length > 0 && (
+          <p className="mt-2 text-right text-sm font-medium text-gray-900">
+            공급가액 합계: {(report.taxableSupplyTotal + report.exemptSupplyTotal).toLocaleString()}원 · 세액 합계:{" "}
+            {report.taxableTaxTotal.toLocaleString()}원 · 총 합계: {report.grandTotal.toLocaleString()}원
+          </p>
+        )}
       </div>
     </div>
   );

@@ -23,42 +23,49 @@ describe("aggregateVendorReport", () => {
       itemName: "식용유",
       category: "PROCESSED" as const,
       unit: "말",
+      taxType: "TAXABLE" as const,
       quantity: 2,
       unitPrice: 46200,
       amount: 92400,
+      taxAmount: 9240,
     },
     {
       deliveryDate: new Date("2026-05-18T00:00:00.000Z"),
       itemName: "식용유",
       category: "PROCESSED" as const,
       unit: "말",
+      taxType: "TAXABLE" as const,
       quantity: 3,
       unitPrice: 46200,
       amount: 138600,
+      taxAmount: 13860,
     },
     {
       deliveryDate: new Date("2026-05-18T00:00:00.000Z"),
       itemName: "참기름",
       category: "PROCESSED" as const,
       unit: "ea",
+      taxType: "TAXABLE" as const,
       quantity: 1,
       unitPrice: 23100,
       amount: 23100,
+      taxAmount: 2310,
     },
   ];
 
-  it("품목별 수량/금액을 합산하고 가중평균 단가를 계산한다", () => {
+  it("품목별 수량/금액/세액을 합산하고 가중평균 단가를 계산한다", () => {
     const report = aggregateVendorReport(rows);
-    const oil = report.items.find((i) => i.itemName === "식용유")!;
+    const oil = report.taxableItems.find((i) => i.itemName === "식용유")!;
     expect(oil.totalQuantity).toBe(5);
     expect(oil.totalAmount).toBe(231000);
+    expect(oil.totalTaxAmount).toBe(9240 + 13860);
     expect(oil.unitPrice).toBe(46200);
     expect(oil.priceVaries).toBe(false);
   });
 
   it("날짜별 수량 매트릭스를 올바르게 채운다", () => {
     const report = aggregateVendorReport(rows);
-    const oil = report.items.find((i) => i.itemName === "식용유")!;
+    const oil = report.taxableItems.find((i) => i.itemName === "식용유")!;
     expect(oil.quantityByDate["2026-05-11"]).toBe(2);
     expect(oil.quantityByDate["2026-05-18"]).toBe(3);
   });
@@ -71,18 +78,48 @@ describe("aggregateVendorReport", () => {
         itemName: "식용유",
         category: "PROCESSED" as const,
         unit: "말",
+        taxType: "TAXABLE" as const,
         quantity: 1,
         unitPrice: 47000,
         amount: 47000,
+        taxAmount: 4700,
       },
     ];
     const report = aggregateVendorReport(varyingRows);
-    const oil = report.items.find((i) => i.itemName === "식용유")!;
+    const oil = report.taxableItems.find((i) => i.itemName === "식용유")!;
     expect(oil.priceVaries).toBe(true);
   });
 
-  it("전체 합계 금액을 계산한다", () => {
+  it("공급가액 합계, 세액 합계, 총 합계(공급가액+세액)를 계산한다", () => {
     const report = aggregateVendorReport(rows);
-    expect(report.grandTotal).toBe(92400 + 138600 + 23100);
+    expect(report.taxableSupplyTotal).toBe(92400 + 138600 + 23100);
+    expect(report.taxableTaxTotal).toBe(9240 + 13860 + 2310);
+    expect(report.exemptSupplyTotal).toBe(0);
+    expect(report.grandTotal).toBe(report.taxableSupplyTotal + report.taxableTaxTotal);
+  });
+
+  it("과세와 면세 품목을 별도 목록으로 나누고, 같은 품목명이라도 세금유형이 다르면 다른 행이 된다", () => {
+    const mixedRows = [
+      ...rows,
+      {
+        deliveryDate: new Date("2026-05-20T00:00:00.000Z"),
+        itemName: "식용유",
+        category: "PROCESSED" as const,
+        unit: "말",
+        taxType: "EXEMPT" as const,
+        quantity: 1,
+        unitPrice: 46200,
+        amount: 46200,
+        taxAmount: null,
+      },
+    ];
+    const report = aggregateVendorReport(mixedRows);
+    expect(report.taxableItems.some((i) => i.itemName === "식용유")).toBe(true);
+    expect(report.exemptItems.some((i) => i.itemName === "식용유")).toBe(true);
+    const exemptOil = report.exemptItems.find((i) => i.itemName === "식용유")!;
+    expect(exemptOil.totalAmount).toBe(46200);
+    expect(exemptOil.totalTaxAmount).toBe(0);
+    expect(report.exemptSupplyTotal).toBe(46200);
+    expect(report.grandTotal).toBe(report.taxableSupplyTotal + report.taxableTaxTotal + 46200);
   });
 });
