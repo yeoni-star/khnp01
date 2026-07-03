@@ -129,3 +129,45 @@ model DeliverySlipItem {
   @@index([slipId])
   @@index([itemName, category])
 }
+
+/** 식당별 검수일지 양식(커스텀 컬럼 정의). columns: Array<{ key, label, type: "CHECK"|"TEXT"|"DATE"|"SELECT", options?: string[] }> */
+model InspectionTemplate {
+  id         String     @id @default(cuid())
+  restaurant Restaurant @unique
+  columns    Json
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+}
+
+/** 식당+날짜별 검수일지 1건 */
+model InspectionLog {
+  id            String   @id @default(cuid())
+  restaurant    Restaurant
+  logDate       DateTime
+  inspectorName String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  rows InspectionLogRow[]
+
+  @@unique([restaurant, logDate])
+}
+
+/** 검수일지의 각 품목 행. itemName/unit/quantity/vendorName은 불러온 시점의 스냅샷이며,
+ * 이후 거래명세표가 수정돼도 검수일지 기록은 바뀌지 않는다. values는 커스텀 컬럼 key -> 값. */
+model InspectionLogRow {
+  id           String        @id @default(cuid())
+  logId        String
+  log          InspectionLog @relation(fields: [logId], references: [id], onDelete: Cascade)
+  sourceItemId String?
+  itemName     String
+  unit         String
+  quantity     Float
+  vendorName   String
+  values       Json          @default("{}")
+  order        Int           @default(0)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@index([logId])
+}
