@@ -17,7 +17,7 @@ type FixedColumn = "no" | "name" | "unit" | "qty" | "price" | "amount" | "tax";
 
 const DEFAULT_COL_WIDTHS: Record<FixedColumn, number> = {
   no: 40,
-  name: 140,
+  name: 120,
   unit: 40,
   qty: 40,
   price: 70,
