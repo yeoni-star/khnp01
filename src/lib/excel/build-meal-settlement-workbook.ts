@@ -16,13 +16,14 @@ export async function buildMealSettlementWorkbook(params: {
     dinnerCount: number;
     totalCount: number;
     totalAmount: number;
+    detailStr: string;
   }[];
 }): Promise<ExcelJS.Buffer> {
   const { companyName, monthLabel, pricePerMeal, totalLunchCount, totalDinnerCount, rows } = params;
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet("식수정산");
 
-  const totalCols = 7;
+  const totalCols = 8;
   const grandTotalCount = totalLunchCount + totalDinnerCount;
   const grandTotalAmount = grandTotalCount * pricePerMeal;
 
@@ -35,14 +36,14 @@ export async function buildMealSettlementWorkbook(params: {
   sheet.mergeCells(2, 1, 2, 2);
   sheet.getCell(2, 1).value = `1식 단가 : ${pricePerMeal.toLocaleString()}원`;
   
-  sheet.mergeCells(2, 3, 2, 4);
+  sheet.mergeCells(2, 3, 2, 5);
   sheet.getCell(2, 3).value = `중식: ${totalLunchCount}명 / 석식: ${totalDinnerCount}명`;
   
-  sheet.mergeCells(2, 5, 2, 7);
-  sheet.getCell(2, 5).value = `총 합계 : ${grandTotalCount}명 / ${grandTotalAmount.toLocaleString()}원`;
+  sheet.mergeCells(2, 6, 2, 8);
+  sheet.getCell(2, 6).value = `총 합계 : ${grandTotalCount}명 / ${grandTotalAmount.toLocaleString()}원`;
 
   const headerRow = 4;
-  const headers = ["번호", "이름", "연락처", "중식 이용", "석식 이용", "총 이용건수", "정산 합계"];
+  const headers = ["번호", "이름", "연락처", "이용 상세내역", "중식 이용", "석식 이용", "총 이용건수", "정산 합계"];
   headers.forEach((label, i) => {
     const cell = sheet.getCell(headerRow, i + 1);
     cell.value = label;
@@ -58,6 +59,7 @@ export async function buildMealSettlementWorkbook(params: {
       i + 1,
       row.name,
       row.phone,
+      row.detailStr,
       `${row.lunchCount}회`,
       `${row.dinnerCount}회`,
       `${row.totalCount}건`,
@@ -66,10 +68,10 @@ export async function buildMealSettlementWorkbook(params: {
     values.forEach((value, c) => {
       const cell = sheet.getCell(rowIdx, c + 1);
       cell.value = value;
-      if (c === 0 || c >= 3) {
+      if (c === 0 || c >= 4) {
         cell.alignment = { horizontal: "center" };
       }
-      if (c === 6) {
+      if (c === 7) {
         cell.alignment = { horizontal: "right" };
       }
     });

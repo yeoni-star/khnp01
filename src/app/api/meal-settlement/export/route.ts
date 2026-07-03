@@ -50,6 +50,7 @@ export async function GET(request: NextRequest) {
     phone: string;
     lunchCount: number;
     dinnerCount: number;
+    details: string[];
   }>();
 
   for (const r of registrations) {
@@ -59,7 +60,14 @@ export async function GET(request: NextRequest) {
       phone: r.phone,
       lunchCount: 0,
       dinnerCount: 0,
+      details: [],
     };
+    
+    const dateStr = r.mealDate.toISOString().slice(0, 10);
+    const mmdd = dateStr.slice(5, 10).replace("-", ".");
+    const typeLabel = r.mealType === "LUNCH" ? "중" : "석";
+    entry.details.push(`${mmdd}(${typeLabel})`);
+
     if (r.mealType === "LUNCH") {
       entry.lunchCount++;
       totalLunchCount++;
@@ -75,7 +83,8 @@ export async function GET(request: NextRequest) {
     .map(u => ({
       ...u,
       totalCount: u.lunchCount + u.dinnerCount,
-      totalAmount: (u.lunchCount + u.dinnerCount) * company.pricePerMeal
+      totalAmount: (u.lunchCount + u.dinnerCount) * company.pricePerMeal,
+      detailStr: u.details.join(", ")
     }));
 
   const monthLabel = `${startStr} ~ ${endStr}`;
