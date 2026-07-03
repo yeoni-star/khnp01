@@ -124,7 +124,7 @@ export default async function RequiredQuantityPage({
             ))}
           </select>
         </div>
-        <div className="col-span-2 flex items-center gap-2 sm:col-span-5">
+        <div className="col-span-2 flex flex-wrap items-center gap-2 sm:col-span-5">
           <button
             type="submit"
             className="rounded bg-primary-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-primary-700 cursor-pointer"
@@ -132,6 +132,18 @@ export default async function RequiredQuantityPage({
             조회
           </button>
           <ExportCsvButton data={exportData} filename={`소요수량산출_${restaurantLabel}_${start}_${end}.csv`} />
+          <a
+            href={`/api/templates/estimate-excel?start=${start}&end=${end}&vendorId=${vendorId}&category=${category ?? ""}&restaurant=${restaurant}&taxType=TAXABLE`}
+            className="rounded border border-primary-300 bg-primary-50 px-3 py-1.5 text-xs font-bold text-primary-700 hover:bg-primary-100 transition"
+          >
+            📄 과세 견적서 다운로드
+          </a>
+          <a
+            href={`/api/templates/estimate-excel?start=${start}&end=${end}&vendorId=${vendorId}&category=${category ?? ""}&restaurant=${restaurant}&taxType=EXEMPT`}
+            className="rounded border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 hover:bg-emerald-100 transition"
+          >
+            📄 면세 견적서 다운로드
+          </a>
         </div>
       </form>
 
