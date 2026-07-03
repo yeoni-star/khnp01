@@ -67,11 +67,7 @@ export default async function MealCompanyDetailPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4 print:hidden">
-        <Link href={`/meal-settlement?start=${startStr}&end=${endStr}`} className="text-gray-500 hover:text-gray-900">
-          &larr; 목록으로
-        </Link>
-      </div>
+
 
       <div className="flex items-center justify-between print:hidden">
         <h1 className="text-xl font-bold text-gray-900">{titleText}</h1>
