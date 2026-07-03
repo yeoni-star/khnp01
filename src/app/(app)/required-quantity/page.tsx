@@ -17,7 +17,7 @@ function defaultRange() {
 export default async function RequiredQuantityPage({
   searchParams,
 }: {
-  searchParams: Promise<{ start?: string; end?: string; vendorId?: string; category?: string }>;
+  searchParams: Promise<{ start?: string; end?: string; vendorId?: string; category?: string; restaurant?: string }>;
 }) {
   const params = await searchParams;
   const { start: defaultStart, end: defaultEnd } = defaultRange();
@@ -28,12 +28,15 @@ export default async function RequiredQuantityPage({
     params.category && (CATEGORIES as readonly string[]).includes(params.category)
       ? (params.category as CategoryCode)
       : undefined;
+  const restaurant = (params.restaurant === "A" || params.restaurant === "B")
+    ? params.restaurant
+    : "ALL";
 
   const session = await getSession();
   const vendors = await db.vendor.findMany({ orderBy: { name: "asc" } });
 
   const rows = await buildQuantityReport(
-    session!.restaurant,
+    restaurant,
     new Date(`${start}T00:00:00.000Z`),
     new Date(`${end}T23:59:59.999Z`),
     { vendorId: vendorId || undefined, category }
@@ -46,6 +49,8 @@ export default async function RequiredQuantityPage({
     "기간 내 총수량": r.totalQuantity,
   }));
 
+  const restaurantLabel = restaurant === "A" ? "본관" : restaurant === "B" ? "후문" : "전체";
+
   return (
     <div className="space-y-6">
       <div>
@@ -57,7 +62,7 @@ export default async function RequiredQuantityPage({
 
       <form
         method="get"
-        className="grid grid-cols-2 gap-3 rounded-md border border-gray-200 bg-white p-4 sm:grid-cols-4"
+        className="grid grid-cols-2 gap-3 rounded-md border border-gray-200 bg-white p-4 sm:grid-cols-5"
       >
         <div>
           <label className="mb-1 block text-xs font-medium text-gray-600">시작일</label>
@@ -76,6 +81,18 @@ export default async function RequiredQuantityPage({
             defaultValue={end}
             className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm"
           />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-gray-600">식당</label>
+          <select
+            name="restaurant"
+            defaultValue={restaurant}
+            className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm"
+          >
+            <option value="ALL">전체</option>
+            <option value="A">본관</option>
+            <option value="B">후문</option>
+          </select>
         </div>
         <div>
           <label className="mb-1 block text-xs font-medium text-gray-600">업체</label>
@@ -107,14 +124,14 @@ export default async function RequiredQuantityPage({
             ))}
           </select>
         </div>
-        <div className="col-span-2 flex items-center gap-2 sm:col-span-4">
+        <div className="col-span-2 flex items-center gap-2 sm:col-span-5">
           <button
             type="submit"
-            className="rounded bg-primary-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-primary-700"
+            className="rounded bg-primary-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-primary-700 cursor-pointer"
           >
             조회
           </button>
-          <ExportCsvButton data={exportData} filename={`소요수량산출_${start}_${end}.csv`} />
+          <ExportCsvButton data={exportData} filename={`소요수량산출_${restaurantLabel}_${start}_${end}.csv`} />
         </div>
       </form>
 
