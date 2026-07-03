@@ -341,12 +341,14 @@ export default function SlipItemsTable({
         <div className="rounded-md border border-gray-200 bg-white p-4">
           <div className="flex items-center justify-between">
             <label className="block text-xs font-medium text-gray-600">엑셀 업로드 (.xlsx)</label>
-            <a
-              href={`/api/templates/slip-excel?taxType=${taxType}`}
-              className="text-xs text-primary-600 hover:underline"
-            >
-              양식 다운로드
-            </a>
+            <div className="flex gap-3 text-xs">
+              <a href="/api/templates/slip-excel?taxType=TAXABLE" className="text-primary-600 hover:underline">
+                과세 양식 다운로드
+              </a>
+              <a href="/api/templates/slip-excel?taxType=EXEMPT" className="text-primary-600 hover:underline">
+                면세 양식 다운로드
+              </a>
+            </div>
           </div>
           <input
             type="file"
