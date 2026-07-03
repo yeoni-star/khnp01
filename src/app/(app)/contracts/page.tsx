@@ -137,7 +137,7 @@ export default async function ContractsPage() {
                 <tr key={index}>
                   <td className="px-4 py-2 font-medium text-gray-900">{c.vendorName}</td>
                   <td className="px-4 py-2 text-gray-600">
-                    {c.category !== "-" ? CATEGORY_LABELS[c.category] : "-"}
+                    {c.category !== "-" ? CATEGORY_LABELS[c.category as keyof typeof CATEGORY_LABELS] : "-"}
                   </td>
                   <td className="px-4 py-2 text-gray-600">{c.period}</td>
                   <td className="px-4 py-2 text-gray-600">{c.itemCount}</td>
@@ -206,7 +206,7 @@ export default async function ContractsPage() {
               {expiredContracts.map((c, index) => (
                 <tr key={index} className="bg-gray-50/50">
                   <td className="px-4 py-2 font-medium text-gray-900">{c.vendorName}</td>
-                  <td className="px-4 py-2 text-gray-600">{CATEGORY_LABELS[c.category]}</td>
+                  <td className="px-4 py-2 text-gray-600">{CATEGORY_LABELS[c.category as keyof typeof CATEGORY_LABELS]}</td>
                   <td className="px-4 py-2 text-gray-600">{c.period}</td>
                   <td className="px-4 py-2 text-gray-600">{c.itemCount}</td>
                   <td className="px-4 py-2">
