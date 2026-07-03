@@ -7,6 +7,9 @@ const HEADER_FILL: ExcelJS.Fill = { type: "pattern", pattern: "solid", fgColor: 
 export const SLIP_IMPORT_HEADER_ROW = 3;
 
 export function buildSlipImportHeaders(taxType: TaxTypeCode): string[] {
+  if (taxType === "TAXABLE") {
+    return ["품명", "규격", "수량", "단가", "세액"];
+  }
   return ["품명", "규격", "수량", "단가"];
 }
 
@@ -23,7 +26,7 @@ export async function buildSlipImportTemplate(taxType: TaxTypeCode): Promise<Exc
   const noteCell = sheet.getCell(2, 1);
   noteCell.value =
     taxType === "TAXABLE"
-      ? "수량과 단가를 입력해 주세요. 공급가액 및 세액은 자동으로 계산되어 반영됩니다."
+      ? "수량, 단가(공급가액), 세액을 입력해 주세요. 금액은 자동으로 계산되어 반영됩니다."
       : "수량과 단가를 입력해 주세요. 공급가액은 자동으로 계산되어 반영됩니다.";
   noteCell.font = { italic: true, size: 9, color: { argb: "FF6B7280" } };
   sheet.mergeCells(2, 1, 2, headers.length);
@@ -46,7 +49,10 @@ export async function buildSlipImportTemplate(taxType: TaxTypeCode): Promise<Exc
   sheet.getColumn(1).width = 24;
   sheet.getColumn(2).width = 12;
   sheet.getColumn(3).width = 8;
-  sheet.getColumn(4).width = 12;
+  sheet.getColumn(4).width = 16;
+  if (taxType === "TAXABLE") {
+    sheet.getColumn(5).width = 14;
+  }
 
   return workbook.xlsx.writeBuffer();
 }
