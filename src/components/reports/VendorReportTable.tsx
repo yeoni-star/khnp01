@@ -16,13 +16,13 @@ const MIN_COL_WIDTH = 24;
 type FixedColumn = "no" | "name" | "unit" | "qty" | "price" | "amount" | "tax";
 
 const DEFAULT_COL_WIDTHS: Record<FixedColumn, number> = {
-  no: 40,
-  name: 120,
-  unit: 40,
-  qty: 40,
-  price: 70,
-  amount: 80,
-  tax: 70,
+  no: 32,
+  name: 100,
+  unit: 32,
+  qty: 32,
+  price: 64,
+  amount: 72,
+  tax: 64,
 };
 
 function ColumnHeaderLabel({
@@ -93,7 +93,7 @@ export default function VendorReportTable({
 
   const displayWeeks = paddedWeeks.map((week) => {
     const actualCount = week.dates.length;
-    const defaultVisible = Math.max(3, actualCount);
+    const defaultVisible = Math.max(2, actualCount);
     const visibleCount = visibleCounts[week.label] !== undefined ? visibleCounts[week.label] : defaultVisible;
 
     const dates = week.dates.slice(0, visibleCount);
@@ -105,13 +105,13 @@ export default function VendorReportTable({
 
   function handleAddCol(label: string, actualCount: number) {
     setVisibleCounts((prev) => {
-      const current = prev[label] !== undefined ? prev[label] : Math.max(3, actualCount);
+      const current = prev[label] !== undefined ? prev[label] : Math.max(2, actualCount);
       return { ...prev, [label]: current + 1 };
     });
   }
 
   function handleRemoveCol(label: string, actualCount: number) {
-    const current = visibleCounts[label] !== undefined ? visibleCounts[label] : Math.max(3, actualCount);
+    const current = visibleCounts[label] !== undefined ? visibleCounts[label] : Math.max(2, actualCount);
     if (current <= 0) return;
 
     const targetIndex = current - 1;
