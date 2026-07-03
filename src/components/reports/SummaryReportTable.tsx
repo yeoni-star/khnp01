@@ -21,7 +21,7 @@ export default function SummaryReportTable({
           <PrintButton />
           <a
             href={`/api/reports/summary-export?year=${year}&month=${month}`}
-            className="rounded bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
+            className="rounded bg-primary-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-primary-700"
           >
             엑셀로 내보내기
           </a>

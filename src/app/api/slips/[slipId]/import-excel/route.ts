@@ -2,12 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { requireSession } from "@/lib/session";
 import { db } from "@/lib/db";
-import { saveUploadedFile } from "@/lib/storage";
-
-const ACCEPTED_TYPES: Record<string, "image/jpeg" | "image/png"> = {
-  "image/jpeg": "image/jpeg",
-  "image/png": "image/png",
-};
+import { parseSlipExcel } from "@/lib/excel/parse-slip-excel";
 
 export async function POST(
   request: NextRequest,
@@ -26,34 +21,31 @@ export async function POST(
   if (!(file instanceof File)) {
     return NextResponse.json({ ok: false, message: "파일을 선택해 주세요." }, { status: 400 });
   }
-
-  const mediaType = ACCEPTED_TYPES[file.type];
-  if (!mediaType) {
-    return NextResponse.json(
-      { ok: false, message: "JPG 또는 PNG 이미지 파일만 업로드할 수 있습니다." },
-      { status: 400 }
-    );
+  if (!file.name.toLowerCase().endsWith(".xlsx")) {
+    return NextResponse.json({ ok: false, message: "엑셀(.xlsx) 파일만 업로드할 수 있습니다." }, { status: 400 });
   }
 
   const buffer = Buffer.from(await file.arrayBuffer());
 
-  const sourceFileUrl = await saveUploadedFile(buffer, file.name);
+  let items;
+  try {
+    items = await parseSlipExcel(buffer);
+  } catch (error) {
+    console.error("Excel parse failed", error);
+    return NextResponse.json({ ok: false, message: "엑셀 파일을 읽는 중 오류가 발생했습니다." }, { status: 400 });
+  }
+
+  if (items.length === 0) {
+    return NextResponse.json({
+      ok: false,
+      message: "품목을 찾을 수 없습니다. 제공된 양식과 헤더(품명/수량/단가 등)를 사용했는지 확인해 주세요.",
+    });
+  }
+
   await db.deliverySlip.update({
     where: { id: slipId },
-    data: { sourceType: "OCR", sourceFileUrl },
+    data: { sourceType: "EXCEL" },
   });
 
-  try {
-    return NextResponse.json({
-      ok: true,
-      message: "파일이 저장되었습니다.",
-      sourceFileUrl,
-    });
-  } catch (error) {
-    console.error("Upload failed", error);
-    return NextResponse.json(
-      { ok: false, message: "업로드에 실패했습니다." },
-      { status: 500 }
-    );
-  }
+  return NextResponse.json({ ok: true, items });
 }

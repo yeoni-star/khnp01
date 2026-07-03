@@ -9,6 +9,52 @@ function formatReportIssueDate(year: number, month: number): string {
   return `${String(year).slice(-2)}.${month}.${lastDay}`;
 }
 
+const WIDTH_STEP = 8;
+const MIN_COL_WIDTH = 24;
+
+type FixedColumn = "no" | "name" | "unit" | "qty" | "price" | "amount";
+
+const DEFAULT_COL_WIDTHS: Record<FixedColumn, number> = {
+  no: 48,
+  name: 180,
+  unit: 48,
+  qty: 48,
+  price: 80,
+  amount: 96,
+};
+
+function ColumnHeaderLabel({
+  label,
+  onDecrease,
+  onIncrease,
+}: {
+  label: string;
+  onDecrease: () => void;
+  onIncrease: () => void;
+}) {
+  return (
+    <div className="flex items-center justify-center gap-1">
+      <span>{label}</span>
+      <div className="flex items-center gap-0.5 print:hidden">
+        <button
+          type="button"
+          onClick={onDecrease}
+          className="flex h-4 w-4 items-center justify-center rounded bg-gray-200 text-xs text-gray-600 hover:bg-gray-300"
+        >
+          -
+        </button>
+        <button
+          type="button"
+          onClick={onIncrease}
+          className="flex h-4 w-4 items-center justify-center rounded bg-gray-200 text-xs text-gray-600 hover:bg-gray-300"
+        >
+          +
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function VendorReportTable({
   vendorId,
   vendorName,
@@ -27,49 +73,78 @@ export default function VendorReportTable({
   const [emptyRowCount, setEmptyRowCount] = useState(0);
   const [reviewer1, setReviewer1] = useState("");
   const [reviewer2, setReviewer2] = useState("");
+  const [colWidths, setColWidths] = useState<Record<FixedColumn, number>>(DEFAULT_COL_WIDTHS);
+  const [visibleCounts, setVisibleCounts] = useState<Record<string, number>>({});
 
-  // 4주치 고정 양식을 위해 week와 date를 패딩
+  function adjustWidth(col: FixedColumn, delta: number) {
+    setColWidths((prev) => ({
+      ...prev,
+      [col]: Math.max(MIN_COL_WIDTH, (prev[col] ?? DEFAULT_COL_WIDTHS[col]) + delta),
+    }));
+  }
+
+  // 4주치 고정 양식을 위해 week를 패딩
   const paddedWeeks = [...report.weeks];
   while (paddedWeeks.length < 4) {
     paddedWeeks.push({ label: `${paddedWeeks.length + 1}주`, dates: [] });
   }
 
-  const [emptySlots, setEmptySlots] = useState<Record<string, number>>({});
-
   const displayWeeks = paddedWeeks.map((week) => {
     const actualCount = week.dates.length;
-    const defaultEmpty = Math.max(0, 3 - actualCount);
-    const emptyCount = emptySlots[week.label] !== undefined ? emptySlots[week.label] : defaultEmpty;
-    
-    const dates = [...week.dates];
-    for (let i = 0; i < emptyCount; i++) {
-      dates.push(`empty-${week.label}-${i}`);
+    const defaultVisible = Math.max(3, actualCount);
+    const visibleCount = visibleCounts[week.label] !== undefined ? visibleCounts[week.label] : defaultVisible;
+
+    const dates = week.dates.slice(0, visibleCount);
+    while (dates.length < visibleCount) {
+      dates.push(`empty-${week.label}-${dates.length}`);
     }
     return { ...week, dates, actualCount };
   });
 
-  const handleAddCol = (label: string, actualCount: number) => {
-    setEmptySlots(prev => {
-      const current = prev[label] ?? Math.max(0, 3 - actualCount);
+  function handleAddCol(label: string, actualCount: number) {
+    setVisibleCounts((prev) => {
+      const current = prev[label] !== undefined ? prev[label] : Math.max(3, actualCount);
       return { ...prev, [label]: current + 1 };
     });
-  };
+  }
 
-  const handleRemoveCol = (label: string, actualCount: number) => {
-    setEmptySlots(prev => {
-      const current = prev[label] ?? Math.max(0, 3 - actualCount);
+  function handleRemoveCol(label: string, actualCount: number) {
+    setVisibleCounts((prev) => {
+      const current = prev[label] !== undefined ? prev[label] : Math.max(3, actualCount);
       return { ...prev, [label]: Math.max(0, current - 1) };
     });
-  };
+  }
 
   const dateColumns = displayWeeks.flatMap((w) => w.dates);
   const colSpanCount = dateColumns.length || 1;
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between print:hidden">
+      <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
         <h1 className="text-lg font-semibold text-gray-900">납품보고서 - {vendorName}</h1>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {displayWeeks.map((week) => (
+            <div
+              key={week.label}
+              className="flex items-center gap-1 rounded border border-gray-300 px-2 py-1 text-xs text-gray-700"
+            >
+              <span>{week.label}</span>
+              <button
+                type="button"
+                onClick={() => handleRemoveCol(week.label, week.actualCount)}
+                className="flex h-4 w-4 items-center justify-center rounded bg-gray-200 text-xs text-gray-600 hover:bg-gray-300"
+              >
+                -
+              </button>
+              <button
+                type="button"
+                onClick={() => handleAddCol(week.label, week.actualCount)}
+                className="flex h-4 w-4 items-center justify-center rounded bg-gray-200 text-xs text-gray-600 hover:bg-gray-300"
+              >
+                +
+              </button>
+            </div>
+          ))}
           <button
             onClick={() => setEmptyRowCount(emptyRowCount + 5)}
             className="rounded border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
@@ -85,7 +160,7 @@ export default function VendorReportTable({
           <PrintButton />
           <a
             href={`/api/reports/vendor-export?vendorId=${vendorId}&year=${year}&month=${month}`}
-            className="rounded bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
+            className="rounded bg-primary-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-primary-700"
           >
             엑셀로 내보내기
           </a>
@@ -149,50 +224,60 @@ export default function VendorReportTable({
           <table className="w-full min-w-max border-collapse text-xs">
             <thead>
               <tr className="bg-gray-50 text-center">
-                <th rowSpan={3} className="w-12 border border-gray-400 px-1 py-1">
-                  번호
+                <th rowSpan={3} className="border border-gray-400 px-1 py-1" style={{ width: colWidths.no }}>
+                  <ColumnHeaderLabel
+                    label="번호"
+                    onDecrease={() => adjustWidth("no", -WIDTH_STEP)}
+                    onIncrease={() => adjustWidth("no", WIDTH_STEP)}
+                  />
                 </th>
-                <th rowSpan={3} className="border border-gray-400 px-2 py-1">
-                  품명/규격
+                <th rowSpan={3} className="border border-gray-400 px-2 py-1" style={{ width: colWidths.name }}>
+                  <ColumnHeaderLabel
+                    label="품명/규격"
+                    onDecrease={() => adjustWidth("name", -WIDTH_STEP)}
+                    onIncrease={() => adjustWidth("name", WIDTH_STEP)}
+                  />
                 </th>
-                <th rowSpan={3} className="w-12 border border-gray-400 px-1 py-1">
-                  단위
+                <th rowSpan={3} className="border border-gray-400 px-1 py-1" style={{ width: colWidths.unit }}>
+                  <ColumnHeaderLabel
+                    label="단위"
+                    onDecrease={() => adjustWidth("unit", -WIDTH_STEP)}
+                    onIncrease={() => adjustWidth("unit", WIDTH_STEP)}
+                  />
                 </th>
-                <th rowSpan={3} className="w-12 border border-gray-400 px-1 py-1">
-                  수량
+                <th rowSpan={3} className="border border-gray-400 px-1 py-1" style={{ width: colWidths.qty }}>
+                  <ColumnHeaderLabel
+                    label="수량"
+                    onDecrease={() => adjustWidth("qty", -WIDTH_STEP)}
+                    onIncrease={() => adjustWidth("qty", WIDTH_STEP)}
+                  />
                 </th>
-                <th rowSpan={3} className="w-20 border border-gray-400 px-1 py-1">
-                  단가
+                <th rowSpan={3} className="border border-gray-400 px-1 py-1" style={{ width: colWidths.price }}>
+                  <ColumnHeaderLabel
+                    label="단가"
+                    onDecrease={() => adjustWidth("price", -WIDTH_STEP)}
+                    onIncrease={() => adjustWidth("price", WIDTH_STEP)}
+                  />
                 </th>
-                <th rowSpan={3} className="w-24 border border-gray-400 px-1 py-1">
-                  금액
+                <th rowSpan={3} className="border border-gray-400 px-1 py-1" style={{ width: colWidths.amount }}>
+                  <ColumnHeaderLabel
+                    label="금액"
+                    onDecrease={() => adjustWidth("amount", -WIDTH_STEP)}
+                    onIncrease={() => adjustWidth("amount", WIDTH_STEP)}
+                  />
                 </th>
                 <th colSpan={colSpanCount} className="border border-gray-400 px-2 py-1">
                   납품현황
                 </th>
               </tr>
               <tr className="bg-gray-50 text-center">
-                {displayWeeks.map((week) => (
-                  <th key={week.label} colSpan={week.dates.length} className="border border-gray-400 px-1 py-1 font-medium">
-                    <div className="flex items-center justify-center gap-2">
-                      <span>{week.label}</span>
-                      <div className="flex items-center gap-1 print:hidden">
-                        <button
-                          onClick={() => handleRemoveCol(week.label, week.actualCount)}
-                          className="flex h-4 w-4 items-center justify-center rounded bg-gray-200 text-xs text-gray-600 hover:bg-gray-300"
-                        >
-                          -
-                        </button>
-                        <button
-                          onClick={() => handleAddCol(week.label, week.actualCount)}
-                          className="flex h-4 w-4 items-center justify-center rounded bg-gray-200 text-xs text-gray-600 hover:bg-gray-300"
-                        >
-                          +
-                        </button>
-                      </div>
-                    </div>
-                  </th>
-                ))}
+                {displayWeeks
+                  .filter((week) => week.dates.length > 0)
+                  .map((week) => (
+                    <th key={week.label} colSpan={week.dates.length} className="border border-gray-400 px-1 py-1 font-medium">
+                      {week.label}
+                    </th>
+                  ))}
                 {dateColumns.length === 0 && <th className="border border-gray-400 px-2 py-1">-</th>}
               </tr>
               <tr className="bg-gray-50 text-center">

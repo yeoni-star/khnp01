@@ -34,6 +34,11 @@ enum MatchType {
   NONE
 }
 
+enum TaxType {
+  EXEMPT // 면세
+  TAXABLE // 과세
+}
+
 model Vendor {
   id         String   @id @default(cuid())
   name       String   @unique
@@ -88,6 +93,7 @@ model DeliverySlip {
   vendorId       String
   vendor         Vendor     @relation(fields: [vendorId], references: [id], onDelete: Restrict)
   deliveryDate   DateTime
+  taxType        TaxType    @default(TAXABLE)
   status         SlipStatus @default(DRAFT)
   sourceType     String     @default("MANUAL")
   sourceFileUrl  String?
@@ -113,6 +119,7 @@ model DeliverySlipItem {
   unit                  String
   unitPrice             Int
   amount                Int
+  taxAmount             Int?
   matchedContractItemId String?
   matchType             MatchType    @default(NONE)
   priceOverridden       Boolean      @default(false)

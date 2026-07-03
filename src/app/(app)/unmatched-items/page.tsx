@@ -10,7 +10,7 @@ export default async function UnmatchedItemsPage(props: {
   const session = await getSession();
   const searchParams = await props.searchParams;
 
-  const dateFilter: any = {};
+  const dateFilter: { gte?: Date; lte?: Date } = {};
   if (searchParams.startDate) {
     dateFilter.gte = new Date(searchParams.startDate);
   }

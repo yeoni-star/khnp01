@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { listActiveContractItems } from "@/lib/pricing";
 import { RESTAURANT_LABELS } from "@/lib/restaurants";
+import { TAX_TYPE_LABELS } from "@/lib/tax";
 import SlipItemsTable from "@/components/slips/SlipItemsTable";
 import DeleteSlipButton from "@/components/slips/DeleteSlipButton";
 
@@ -27,7 +28,8 @@ export default async function SlipDetailPage({
             {slip.vendor.name} · {slip.deliveryDate.toISOString().slice(0, 10)}
           </h1>
           <p className="mt-1 text-sm text-gray-600">
-            {RESTAURANT_LABELS[slip.restaurant]} · {slip.status === "CONFIRMED" ? "확정됨" : "임시저장"}
+            {RESTAURANT_LABELS[slip.restaurant]} · {TAX_TYPE_LABELS[slip.taxType]} ·{" "}
+            {slip.status === "CONFIRMED" ? "확정됨" : "임시저장"}
           </p>
         </div>
         <DeleteSlipButton slipId={slip.id} />
@@ -36,6 +38,7 @@ export default async function SlipDetailPage({
       <SlipItemsTable
         slipId={slip.id}
         status={slip.status}
+        taxType={slip.taxType}
         contractItems={activeContractItems.map((i) => ({
           id: i.id,
           itemName: i.itemName,
@@ -49,6 +52,7 @@ export default async function SlipDetailPage({
           unit: i.unit,
           quantity: i.quantity,
           unitPrice: i.unitPrice,
+          taxAmount: i.taxAmount,
           matchedContractItemId: i.matchedContractItemId,
           matchType: i.matchType,
           priceOverridden: i.priceOverridden,

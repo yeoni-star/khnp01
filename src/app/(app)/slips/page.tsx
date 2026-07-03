@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { getSession } from "@/lib/session";
+import { TAX_TYPE_LABELS } from "@/lib/tax";
 
 export default async function SlipsPage() {
   const session = await getSession();
@@ -19,7 +20,7 @@ export default async function SlipsPage() {
         </div>
         <Link
           href="/slips/new"
-          className="rounded bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
+          className="rounded bg-primary-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-primary-700"
         >
           새 거래명세표
         </Link>
@@ -31,6 +32,7 @@ export default async function SlipsPage() {
             <tr>
               <th className="px-4 py-2">납품일자</th>
               <th className="px-4 py-2">업체</th>
+              <th className="px-4 py-2">면세/과세</th>
               <th className="px-4 py-2">품목 수</th>
               <th className="px-4 py-2">합계금액</th>
               <th className="px-4 py-2">상태</th>
@@ -44,6 +46,7 @@ export default async function SlipsPage() {
                 <tr key={s.id}>
                   <td className="px-4 py-2 text-gray-600">{s.deliveryDate.toISOString().slice(0, 10)}</td>
                   <td className="px-4 py-2 font-medium text-gray-900">{s.vendor.name}</td>
+                  <td className="px-4 py-2 text-gray-600">{TAX_TYPE_LABELS[s.taxType]}</td>
                   <td className="px-4 py-2 text-gray-600">{s.items.length}</td>
                   <td className="px-4 py-2 text-gray-600">{total.toLocaleString()}원</td>
                   <td className="px-4 py-2">
@@ -56,7 +59,7 @@ export default async function SlipsPage() {
                     </span>
                   </td>
                   <td className="px-4 py-2 text-right">
-                    <Link href={`/slips/${s.id}`} className="text-blue-600 hover:underline">
+                    <Link href={`/slips/${s.id}`} className="text-primary-600 hover:underline">
                       상세
                     </Link>
                   </td>
@@ -65,7 +68,7 @@ export default async function SlipsPage() {
             })}
             {slips.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-6 text-center text-gray-400">
+                <td colSpan={7} className="px-4 py-6 text-center text-gray-400">
                   등록된 거래명세표가 없습니다.
                 </td>
               </tr>

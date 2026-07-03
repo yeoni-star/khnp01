@@ -20,7 +20,7 @@ export default async function ContractsPage() {
         </div>
         <Link
           href="/contracts/new"
-          className="rounded bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
+          className="rounded bg-primary-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-primary-700"
         >
           새 계약 등록
         </Link>
@@ -62,11 +62,11 @@ export default async function ContractsPage() {
                     <div className="flex justify-end gap-3">
                       <Link
                         href={`/slips/new?vendorId=${c.vendorId}`}
-                        className="text-blue-600 hover:underline"
+                        className="text-primary-600 hover:underline"
                       >
                         거래명세표 입력
                       </Link>
-                      <Link href={`/contracts/${c.id}`} className="text-blue-600 hover:underline">
+                      <Link href={`/contracts/${c.id}`} className="text-primary-600 hover:underline">
                         상세
                       </Link>
                     </div>

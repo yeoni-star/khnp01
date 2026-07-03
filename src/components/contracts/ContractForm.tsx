@@ -162,7 +162,7 @@ export default function ContractForm({
               <button type="button" onClick={() => setZoom((z) => Math.max(0.2, z - 0.2))} className="rounded border bg-gray-50 px-2 py-1 text-xs text-gray-700 hover:bg-gray-100">
                 축소
               </button>
-              <button type="button" onClick={() => setIsPinned(!isPinned)} className={`rounded border px-2 py-1 text-xs ${isPinned ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-gray-50 text-gray-700 hover:bg-gray-100'}`}>
+              <button type="button" onClick={() => setIsPinned(!isPinned)} className={`rounded border px-2 py-1 text-xs ${isPinned ? 'bg-primary-50 text-primary-700 border-primary-200' : 'bg-gray-50 text-gray-700 hover:bg-gray-100'}`}>
                 {isPinned ? '고정 해제' : '화면 고정'}
               </button>
             </div>
@@ -280,7 +280,7 @@ export default function ContractForm({
           </div>
         </div>
         {ocrMessage && (
-          <p className={`mb-3 text-xs ${ocrMessage.type === "error" ? "text-red-600" : "text-blue-600"}`}>
+          <p className={`mb-3 text-xs ${ocrMessage.type === "error" ? "text-red-600" : "text-primary-600"}`}>
             {ocrMessage.text}
           </p>
         )}
@@ -338,7 +338,7 @@ export default function ContractForm({
       <button
         type="submit"
         disabled={pending}
-        className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+        className="rounded bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
       >
         {pending ? "저장 중..." : isEdit ? "계약 수정" : "계약 등록"}
       </button>

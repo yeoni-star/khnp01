@@ -84,7 +84,7 @@ export default async function ReportsPage({
         </div>
         <button
           type="submit"
-          className="rounded bg-blue-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
+          className="rounded bg-primary-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-primary-700"
         >
           조회
         </button>
@@ -96,7 +96,7 @@ export default async function ReportsPage({
         </h2>
         <Link
           href={`/reports/summary/${year}/${month}`}
-          className="rounded border border-blue-300 px-3 py-1.5 text-sm font-medium text-blue-700 hover:bg-blue-50"
+          className="rounded border border-primary-300 px-3 py-1.5 text-sm font-medium text-primary-700 hover:bg-primary-50"
         >
           전체 통합 요약 보기
         </Link>
@@ -124,7 +124,7 @@ export default async function ReportsPage({
                         <td className="px-4 py-2 text-right">
                           <Link
                             href={`/reports/vendor/${v.id}/${year}/${month}`}
-                            className="text-blue-600 hover:underline"
+                            className="text-primary-600 hover:underline"
                           >
                             보고서 보기
                           </Link>
@@ -147,7 +147,7 @@ export default async function ReportsPage({
                       <td className="px-4 py-2 text-right">
                         <Link
                           href={`/reports/vendor/${v.id}/${year}/${month}`}
-                          className="text-blue-600 hover:underline"
+                          className="text-primary-600 hover:underline"
                         >
                           보고서 보기
                         </Link>

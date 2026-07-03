@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useActionState, useState } from "react";
 import { createDraftSlip } from "@/actions/slip-actions";
+import { TAX_TYPES, TAX_TYPE_LABELS } from "@/lib/tax";
 
 type ActionState = { ok: boolean; message?: string } | null;
 
@@ -50,7 +51,7 @@ export default function NewSlipForm({
                 {defaultVendor.name}
                 {defaultVendor.categoryLabel ? `(${defaultVendor.categoryLabel})` : ""}
               </p>
-              <Link href="/slips/new" className="mt-1 inline-block text-xs text-blue-600 hover:underline">
+              <Link href="/slips/new" className="mt-1 inline-block text-xs text-primary-600 hover:underline">
                 다른 계약 선택
               </Link>
             </div>
@@ -73,11 +74,30 @@ export default function NewSlipForm({
           )}
         </div>
       </div>
+
+      <div>
+        <label className="mb-1 block text-xs font-medium text-gray-600">면세/과세 *</label>
+        <div className="flex gap-4">
+          {TAX_TYPES.map((code) => (
+            <label key={code} className="flex items-center gap-1.5 text-sm text-gray-700">
+              <input
+                type="radio"
+                name="taxType"
+                value={code}
+                defaultChecked={code === "TAXABLE"}
+                className="h-3.5 w-3.5"
+              />
+              {TAX_TYPE_LABELS[code]}
+            </label>
+          ))}
+        </div>
+      </div>
+
       {state && !state.ok && <p className="text-sm text-red-600">{state.message}</p>}
       <button
         type="submit"
         disabled={pending}
-        className="rounded bg-blue-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+        className="rounded bg-primary-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
       >
         {pending ? "생성 중..." : "다음: 품목 입력"}
       </button>

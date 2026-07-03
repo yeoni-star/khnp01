@@ -6,12 +6,14 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { requireSession } from "@/lib/session";
 import { CATEGORIES } from "@/lib/categories";
+import { TAX_TYPES } from "@/lib/tax";
 
 type ActionResult = { ok: true } | { ok: false; message: string };
 
 const createSlipSchema = z.object({
   vendorId: z.string().min(1, "업체를 선택해 주세요."),
   deliveryDate: z.string().min(1, "납품일자를 입력해 주세요."),
+  taxType: z.enum(TAX_TYPES, { message: "면세/과세를 선택해 주세요." }),
 });
 
 export async function createDraftSlip(formData: FormData): Promise<ActionResult> {
@@ -19,6 +21,7 @@ export async function createDraftSlip(formData: FormData): Promise<ActionResult>
   const parsed = createSlipSchema.safeParse({
     vendorId: formData.get("vendorId"),
     deliveryDate: formData.get("deliveryDate"),
+    taxType: formData.get("taxType"),
   });
   if (!parsed.success) {
     return { ok: false, message: parsed.error.issues[0]?.message ?? "입력값을 확인해 주세요." };
@@ -33,6 +36,7 @@ export async function createDraftSlip(formData: FormData): Promise<ActionResult>
       restaurant: session.restaurant,
       vendorId: parsed.data.vendorId,
       deliveryDate,
+      taxType: parsed.data.taxType,
       sourceType: "MANUAL",
     },
   });
@@ -47,6 +51,7 @@ const itemInputSchema = z.object({
   unit: z.string().trim(),
   quantity: z.coerce.number(),
   unitPrice: z.coerce.number().int(),
+  taxAmount: z.coerce.number().int().nullable().optional(),
   matchedContractItemId: z.string().nullable().optional(),
   matchType: z.enum(["EXACT", "FUZZY_CONFIRMED", "NONE"]),
   priceOverridden: z.boolean().optional(),
@@ -83,6 +88,7 @@ async function replaceSlipItems(slipId: string, itemsJson: string) {
             quantity: row.quantity,
             unitPrice: row.unitPrice,
             amount: Math.round(row.quantity * row.unitPrice),
+            taxAmount: row.taxAmount ?? null,
             matchedContractItemId: row.matchedContractItemId || null,
             matchType: row.matchType,
             priceOverridden: Boolean(row.priceOverridden),

@@ -12,9 +12,9 @@ export default function ExportCsvButton({
 
     const headers = Object.keys(data[0]);
     const csvContent =
-      "\\uFEFF" +
+      "﻿" +
       headers.join(",") +
-      "\\n" +
+      "\n" +
       data
         .map((row) =>
           headers
@@ -25,7 +25,7 @@ export default function ExportCsvButton({
             })
             .join(",")
         )
-        .join("\\n");
+        .join("\n");
 
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);

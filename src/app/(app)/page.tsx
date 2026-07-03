@@ -45,7 +45,7 @@ export default async function DashboardPage() {
           <Link
             key={card.label}
             href={card.href}
-            className="rounded-md border border-gray-200 bg-white p-4 hover:border-blue-300"
+            className="rounded-md border border-gray-200 bg-white p-4 hover:border-primary-300"
           >
             <p className="text-2xl font-semibold text-gray-900">{card.value}</p>
             <p className="mt-1 text-xs text-gray-500">{card.label}</p>
@@ -60,7 +60,7 @@ export default async function DashboardPage() {
             <Link
               key={link.href}
               href={link.href}
-              className="flex items-center justify-center rounded-lg bg-blue-50 px-6 py-4 text-base font-bold text-blue-700 shadow-sm transition-all hover:bg-blue-100 hover:shadow-md"
+              className="flex items-center justify-center rounded-lg bg-primary-50 px-6 py-4 text-base font-bold text-primary-700 shadow-sm transition-all hover:bg-primary-100 hover:shadow-md"
             >
               {link.label}
             </Link>

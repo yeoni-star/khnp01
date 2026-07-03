@@ -28,8 +28,16 @@ export default async function NewSlipPage({
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="rounded-md border border-dashed border-gray-300 bg-gray-50 p-4 text-sm text-gray-500">
-          <p className="font-medium">영수증 업로드 (JPG/PNG)</p>
-          <p className="mt-1 text-xs">다음 화면에서 업로드하면 자동으로 품목을 인식합니다.</p>
+          <p className="font-medium text-gray-900">엑셀 업로드</p>
+          <p className="mt-1 text-xs">다음 화면에서 양식에 맞춘 엑셀을 업로드하면 품목이 자동으로 채워집니다.</p>
+          <div className="mt-2 flex gap-3 text-xs">
+            <a href="/api/templates/slip-excel?taxType=TAXABLE" className="text-primary-600 hover:underline">
+              과세 양식 다운로드
+            </a>
+            <a href="/api/templates/slip-excel?taxType=EXEMPT" className="text-primary-600 hover:underline">
+              면세 양식 다운로드
+            </a>
+          </div>
         </div>
         <div className="rounded-md border border-gray-200 bg-white p-4 text-sm text-gray-700">
           <p className="font-medium text-gray-900">직접 입력</p>

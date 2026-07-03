@@ -16,7 +16,7 @@ export default function AppError({
       <button
         type="button"
         onClick={reset}
-        className="rounded bg-blue-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
+        className="rounded bg-primary-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-primary-700"
       >
         다시 시도
       </button>

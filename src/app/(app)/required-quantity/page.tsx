@@ -110,7 +110,7 @@ export default async function RequiredQuantityPage({
         <div className="col-span-2 flex items-center gap-2 sm:col-span-4">
           <button
             type="submit"
-            className="rounded bg-blue-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
+            className="rounded bg-primary-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-primary-700"
           >
             조회
           </button>

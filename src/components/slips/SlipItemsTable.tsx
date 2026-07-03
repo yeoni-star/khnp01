@@ -2,13 +2,10 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 import { saveSlipDraft, confirmSlip } from "@/actions/slip-actions";
-import { CATEGORIES, CATEGORY_LABELS, type CategoryCode } from "@/lib/categories";
+import type { CategoryCode } from "@/lib/categories";
 import { findSimilarItem } from "@/lib/item-matching";
-import { createWorker } from "tesseract.js";
-import { parseLine, guessDeliveryDate, guessVendorName } from "@/lib/ocr/parser";
-import type { OcrItem } from "@/lib/ocr/schema";
+import { computeTaxAmount, type TaxTypeCode } from "@/lib/tax";
 
 type ContractItemOption = {
   id: string;
@@ -27,10 +24,20 @@ type Row = {
   unit: string;
   quantity: string;
   unitPrice: string;
+  taxAmount: string;
   matchedContractItemId: string | null;
   matchType: MatchType;
   priceOverridden: boolean;
   suggestion: { item: ContractItemOption; score: number } | null;
+};
+
+type ImportedItem = {
+  itemName: string;
+  unit: string;
+  quantity: number;
+  unitPrice: number;
+  amount: number;
+  taxAmount: number | null;
 };
 
 let rowKeySeq = 0;
@@ -47,6 +54,7 @@ function emptyRow(): Row {
     unit: "",
     quantity: "",
     unitPrice: "",
+    taxAmount: "",
     matchedContractItemId: null,
     matchType: "NONE",
     priceOverridden: false,
@@ -58,37 +66,41 @@ function normalize(s: string) {
   return s.trim().toLowerCase();
 }
 
-function matchRow(
-  itemName: string,
-  quantity: number,
-  ocrUnit: string,
-  ocrUnitPrice: number,
+function matchImportedRow(
+  item: ImportedItem,
+  taxType: TaxTypeCode,
   contractItems: ContractItemOption[]
 ): Row {
-  const normalized = normalize(itemName);
+  const normalized = normalize(item.itemName);
   const exact = contractItems.find((c) => normalize(c.itemName) === normalized);
+
   if (exact) {
+    const amount = item.quantity * exact.unitPrice;
     return {
       key: newRowKey(),
-      itemName,
+      itemName: item.itemName,
       category: exact.category,
       unit: exact.unit,
-      quantity: String(quantity),
+      quantity: String(item.quantity),
       unitPrice: String(exact.unitPrice),
+      taxAmount: taxType === "TAXABLE" ? String(item.taxAmount ?? computeTaxAmount(amount)) : "",
       matchedContractItemId: exact.id,
       matchType: "EXACT",
       priceOverridden: false,
       suggestion: null,
     };
   }
-  const similar = findSimilarItem(itemName, contractItems);
+
+  const similar = findSimilarItem(item.itemName, contractItems);
+  const amount = item.quantity * item.unitPrice;
   return {
     key: newRowKey(),
-    itemName,
+    itemName: item.itemName,
     category: "",
-    unit: ocrUnit,
-    quantity: String(quantity),
-    unitPrice: String(ocrUnitPrice || 0),
+    unit: item.unit,
+    quantity: String(item.quantity),
+    unitPrice: String(item.unitPrice || 0),
+    taxAmount: taxType === "TAXABLE" ? String(item.taxAmount ?? computeTaxAmount(amount)) : "",
     matchedContractItemId: null,
     matchType: "NONE",
     priceOverridden: false,
@@ -96,21 +108,16 @@ function matchRow(
   };
 }
 
-type OcrDraftItem = {
-  itemName: string;
-  quantity: number | null;
-  unit: string | null;
-  unitPrice: number | null;
-};
-
 export default function SlipItemsTable({
   slipId,
   status,
+  taxType,
   contractItems,
   initialItems,
 }: {
   slipId: string;
   status: "DRAFT" | "CONFIRMED";
+  taxType: TaxTypeCode;
   contractItems: ContractItemOption[];
   initialItems: {
     itemName: string;
@@ -118,6 +125,7 @@ export default function SlipItemsTable({
     unit: string;
     quantity: number;
     unitPrice: number;
+    taxAmount: number | null;
     matchedContractItemId: string | null;
     matchType: MatchType;
     priceOverridden: boolean;
@@ -133,6 +141,7 @@ export default function SlipItemsTable({
           unit: i.unit,
           quantity: String(i.quantity),
           unitPrice: String(i.unitPrice),
+          taxAmount: i.taxAmount !== null ? String(i.taxAmount) : "",
           matchedContractItemId: i.matchedContractItemId,
           matchType: i.matchType,
           priceOverridden: i.priceOverridden,
@@ -142,71 +151,38 @@ export default function SlipItemsTable({
   );
   const [message, setMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
   const [pending, startTransition] = useTransition();
-  const [ocrPending, setOcrPending] = useState(false);
-  const [ocrNote, setOcrNote] = useState<string | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [isImageFixed, setIsImageFixed] = useState(false);
+  const [importPending, setImportPending] = useState(false);
+  const [importNote, setImportNote] = useState<string | null>(null);
   const readOnly = status === "CONFIRMED";
 
   function updateRow(key: string, patch: Partial<Row>) {
     setRows((prev) => prev.map((r) => (r.key === key ? { ...r, ...patch } : r)));
   }
 
-  async function handleFileUpload(file: File) {
-    setPreviewUrl((prev) => {
-      if (prev) URL.revokeObjectURL(prev);
-      return URL.createObjectURL(file);
-    });
-    setOcrPending(true);
-    setOcrNote(null);
+  async function handleExcelUpload(file: File) {
+    setImportPending(true);
+    setImportNote(null);
     setMessage(null);
-    
+
     try {
-      // 1. 서버에 이미지 파일 저장 요청 (Background 처리)
       const formData = new FormData();
       formData.append("file", file);
-      fetch(`/api/slips/${slipId}/upload`, { method: "POST", body: formData }).catch(console.error);
+      const res = await fetch(`/api/slips/${slipId}/import-excel`, { method: "POST", body: formData });
+      const data = await res.json();
 
-      // 2. 클라이언트 브라우저에서 Tesseract.js 실행
-      const worker = await createWorker("kor+eng");
-      const { data } = await worker.recognize(file, {}, { text: true, blocks: true });
-      
-      const lines: string[] = [];
-      for (const block of data.blocks ?? []) {
-        for (const paragraph of block.paragraphs) {
-          for (const line of paragraph.lines) {
-            lines.push(line.text);
-          }
-        }
+      if (!data.ok) {
+        setMessage({ type: "error", text: data.message ?? "엑셀 업로드에 실패했습니다." });
+        return;
       }
 
-      const items = lines.map(parseLine).filter((item): item is OcrItem => item !== null);
-
-      if (items.length > 0) {
-        setRows(
-          items.map((item) =>
-            matchRow(item.itemName, item.quantity ?? 0, item.unit ?? "", item.unitPrice ?? 0, contractItems)
-          )
-        );
-      }
-
-      const vName = guessVendorName(data.text);
-      const dDate = guessDeliveryDate(data.text);
-      
-      const noteParts: string[] = [];
-      if (vName) noteParts.push(`업체 추정: ${vName}`);
-      if (dDate) noteParts.push(`날짜 추정: ${dDate}`);
-      if (items.length === 0) noteParts.push("품목을 자동으로 인식하지 못했습니다. 직접 입력해 주세요.");
-      
-      setOcrNote(noteParts.length > 0 ? noteParts.join(" · ") : null);
-      setMessage({ type: "success", text: `${items.length}개 품목을 인식했습니다. 검수 후 저장해 주세요.` });
-
-      await worker.terminate();
+      const items: ImportedItem[] = data.items;
+      setRows(items.map((item) => matchImportedRow(item, taxType, contractItems)));
+      setMessage({ type: "success", text: `${items.length}개 품목을 불러왔습니다. 검수 후 저장해 주세요.` });
     } catch (error) {
-      console.error("OCR Error", error);
-      setMessage({ type: "error", text: "업로드/인식 중 오류가 발생했습니다. 직접 입력해 주세요." });
+      console.error("Excel import error", error);
+      setMessage({ type: "error", text: "엑셀 업로드 중 오류가 발생했습니다. 직접 입력해 주세요." });
     } finally {
-      setOcrPending(false);
+      setImportPending(false);
     }
   }
 
@@ -216,15 +192,23 @@ export default function SlipItemsTable({
 
     const exact = contractItems.find((c) => normalize(c.itemName) === normalized);
     if (exact) {
-      updateRow(key, {
-        category: exact.category,
-        unit: exact.unit,
-        unitPrice: String(exact.unitPrice),
-        matchedContractItemId: exact.id,
-        matchType: "EXACT",
-        priceOverridden: false,
-        suggestion: null,
-      });
+      setRows((prev) =>
+        prev.map((r) => {
+          if (r.key !== key) return r;
+          const amount = (Number(r.quantity) || 0) * exact.unitPrice;
+          return {
+            ...r,
+            category: exact.category,
+            unit: exact.unit,
+            unitPrice: String(exact.unitPrice),
+            taxAmount: taxType === "TAXABLE" ? String(computeTaxAmount(amount)) : r.taxAmount,
+            matchedContractItemId: exact.id,
+            matchType: "EXACT" as const,
+            priceOverridden: false,
+            suggestion: null,
+          };
+        })
+      );
       return;
     }
 
@@ -237,11 +221,13 @@ export default function SlipItemsTable({
       prev.map((r) => {
         if (r.key !== key || !r.suggestion) return r;
         const item = r.suggestion.item;
+        const amount = (Number(r.quantity) || 0) * item.unitPrice;
         return {
           ...r,
           category: item.category,
           unit: item.unit,
           unitPrice: String(item.unitPrice),
+          taxAmount: taxType === "TAXABLE" ? String(computeTaxAmount(amount)) : r.taxAmount,
           matchedContractItemId: item.id,
           matchType: "FUZZY_CONFIRMED" as const,
           priceOverridden: false,
@@ -255,15 +241,32 @@ export default function SlipItemsTable({
     updateRow(key, { suggestion: null, matchType: "NONE", matchedContractItemId: null });
   }
 
+  function handleQuantityChange(key: string, value: string) {
+    setRows((prev) =>
+      prev.map((r) => {
+        if (r.key !== key) return r;
+        if (taxType !== "TAXABLE") return { ...r, quantity: value };
+        const amount = (Number(value) || 0) * (Number(r.unitPrice) || 0);
+        return { ...r, quantity: value, taxAmount: String(computeTaxAmount(amount)) };
+      })
+    );
+  }
+
   function handlePriceChange(key: string, value: string) {
     setRows((prev) =>
       prev.map((r) => {
         if (r.key !== key) return r;
         const matched = contractItems.find((c) => c.id === r.matchedContractItemId);
         const overridden = matched ? String(matched.unitPrice) !== value : r.priceOverridden;
-        return { ...r, unitPrice: value, priceOverridden: overridden };
+        if (taxType !== "TAXABLE") return { ...r, unitPrice: value, priceOverridden: overridden };
+        const amount = (Number(r.quantity) || 0) * (Number(value) || 0);
+        return { ...r, unitPrice: value, priceOverridden: overridden, taxAmount: String(computeTaxAmount(amount)) };
       })
     );
+  }
+
+  function handleTaxAmountChange(key: string, value: string) {
+    updateRow(key, { taxAmount: value });
   }
 
   function addRows(count: number) {
@@ -279,7 +282,7 @@ export default function SlipItemsTable({
       rows
         .filter((r) => r.itemName.trim())
         .map((r) => {
-          const matched = contractItems.find(c => c.id === r.matchedContractItemId);
+          const matched = contractItems.find((c) => c.id === r.matchedContractItemId);
           const isPriceDiff = matched ? String(matched.unitPrice) !== r.unitPrice : false;
           return {
             itemName: r.itemName.trim(),
@@ -287,6 +290,7 @@ export default function SlipItemsTable({
             unit: r.unit.trim(),
             quantity: Number(r.quantity) || 0,
             unitPrice: Number(r.unitPrice) || 0,
+            taxAmount: taxType === "TAXABLE" ? Number(r.taxAmount) || 0 : null,
             matchedContractItemId: r.matchedContractItemId,
             matchType: r.matchType,
             priceOverridden: isPriceDiff,
@@ -320,6 +324,8 @@ export default function SlipItemsTable({
   }
 
   const total = rows.reduce((sum, r) => sum + (Number(r.quantity) || 0) * (Number(r.unitPrice) || 0), 0);
+  const totalTax =
+    taxType === "TAXABLE" ? rows.reduce((sum, r) => sum + (Number(r.taxAmount) || 0), 0) : 0;
 
   const hasMismatch = rows.some((row) => {
     const contractItem = contractItems.find((c) => c.id === row.matchedContractItemId);
@@ -331,58 +337,30 @@ export default function SlipItemsTable({
 
   return (
     <div className="space-y-4">
-      <div className={previewUrl ? "grid gap-4 md:grid-cols-[320px_1fr]" : ""}>
-        {previewUrl && (
-          <div
-            className={
-              isImageFixed
-                ? "fixed top-4 left-4 z-50 w-[450px] rounded-lg border border-gray-300 bg-white p-3 shadow-2xl transition-all"
-                : "md:sticky md:top-4 md:self-start"
-            }
-          >
-            <div className="mb-2 flex items-center justify-between">
-              <p className="text-xs font-medium text-gray-600">업로드한 원본 이미지</p>
-              <button
-                type="button"
-                onClick={() => setIsImageFixed(!isImageFixed)}
-                className="rounded border border-gray-300 px-2 py-1 text-xs text-gray-700 hover:bg-gray-50"
-              >
-                {isImageFixed ? "고정 해제" : "화면 고정"}
-              </button>
-            </div>
-            <div className="overflow-hidden rounded-md border border-gray-200 bg-gray-50">
-              <TransformWrapper>
-                <TransformComponent>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={previewUrl}
-                    alt="업로드한 거래명세표 원본"
-                    className="w-full object-contain"
-                    style={isImageFixed ? { maxHeight: "80vh" } : undefined}
-                  />
-                </TransformComponent>
-              </TransformWrapper>
-            </div>
-            <p className="mt-2 text-center text-[10px] text-gray-400">마우스 휠로 확대/축소, 드래그로 이동</p>
-          </div>
-        )}
-        <div className="space-y-4">
       {!readOnly && (
         <div className="rounded-md border border-gray-200 bg-white p-4">
-          <label className="mb-1 block text-xs font-medium text-gray-600">영수증 업로드 (JPG/PNG)</label>
+          <div className="flex items-center justify-between">
+            <label className="block text-xs font-medium text-gray-600">엑셀 업로드 (.xlsx)</label>
+            <a
+              href={`/api/templates/slip-excel?taxType=${taxType}`}
+              className="text-xs text-primary-600 hover:underline"
+            >
+              양식 다운로드
+            </a>
+          </div>
           <input
             type="file"
-            accept="image/jpeg,image/png"
-            disabled={ocrPending}
+            accept=".xlsx"
+            disabled={importPending}
             onChange={(e) => {
               const file = e.target.files?.[0];
-              if (file) void handleFileUpload(file);
+              if (file) void handleExcelUpload(file);
               e.target.value = "";
             }}
-            className="block text-sm"
+            className="mt-1 block text-sm"
           />
-          {ocrPending && <p className="mt-1 text-xs text-gray-500">인식 중입니다...</p>}
-          {ocrNote && <p className="mt-1 text-xs text-gray-500">{ocrNote}</p>}
+          {importPending && <p className="mt-1 text-xs text-gray-500">불러오는 중입니다...</p>}
+          {importNote && <p className="mt-1 text-xs text-gray-500">{importNote}</p>}
         </div>
       )}
 
@@ -395,16 +373,19 @@ export default function SlipItemsTable({
               <th className="px-2 py-2">수량</th>
               <th className="px-2 py-2">단가</th>
               <th className="px-2 py-2">금액</th>
+              {taxType === "TAXABLE" && <th className="px-2 py-2">세액</th>}
               <th className="px-2 py-2" />
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {rows.map((row) => {
-              const contractItem = contractItems.find(c => c.id === row.matchedContractItemId);
+              const contractItem = contractItems.find((c) => c.id === row.matchedContractItemId);
               const isPriceDiff = contractItem && String(contractItem.unitPrice) !== row.unitPrice;
               const isUnitDiff = contractItem && normalize(contractItem.unit) !== normalize(row.unit);
               const amount = (Number(row.quantity) || 0) * (Number(row.unitPrice) || 0);
-              
+              const expectedTax = computeTaxAmount(amount);
+              const isTaxDiff = taxType === "TAXABLE" && (Number(row.taxAmount) || 0) !== expectedTax;
+
               return (
                 <tr key={row.key} className="align-top">
                   <td className="px-2 py-2">
@@ -416,10 +397,10 @@ export default function SlipItemsTable({
                       className="w-40 rounded border border-gray-300 px-2 py-1 text-sm disabled:bg-gray-100"
                     />
                     {row.matchType === "EXACT" && (
-                      <p className="mt-1 text-xs text-blue-600">계약단가 적용</p>
+                      <p className="mt-1 text-xs text-primary-600">계약단가 적용</p>
                     )}
                     {row.matchType === "FUZZY_CONFIRMED" && (
-                      <p className="mt-1 text-xs text-blue-600">유사품목 확인 · 계약단가 적용</p>
+                      <p className="mt-1 text-xs text-primary-600">유사품목 확인 · 계약단가 적용</p>
                     )}
                     {row.matchType === "NONE" && !row.suggestion && row.itemName.trim() && (
                       <p className="mt-1 text-xs text-gray-500">수기 입력</p>
@@ -462,7 +443,7 @@ export default function SlipItemsTable({
                       type="number"
                       value={row.quantity}
                       disabled={readOnly}
-                      onChange={(e) => updateRow(row.key, { quantity: e.target.value })}
+                      onChange={(e) => handleQuantityChange(row.key, e.target.value)}
                       className="w-20 rounded border border-gray-300 px-2 py-1 text-sm disabled:bg-gray-100"
                     />
                   </td>
@@ -479,6 +460,20 @@ export default function SlipItemsTable({
                     {isPriceDiff && <p className="mt-1 text-xs text-red-600">계약단가와 다름</p>}
                   </td>
                   <td className="px-2 py-2 text-gray-700">{amount.toLocaleString()}</td>
+                  {taxType === "TAXABLE" && (
+                    <td className="px-2 py-2">
+                      <input
+                        type="number"
+                        value={row.taxAmount}
+                        disabled={readOnly}
+                        onChange={(e) => handleTaxAmountChange(row.key, e.target.value)}
+                        className={`w-24 rounded border px-2 py-1 text-sm disabled:bg-gray-100 ${
+                          isTaxDiff ? "border-red-400 bg-red-50" : "border-gray-300"
+                        }`}
+                      />
+                      {isTaxDiff && <p className="mt-1 text-xs text-red-600">확인필요</p>}
+                    </td>
+                  )}
                   <td className="px-2 py-2">
                     {!readOnly && (
                       <button
@@ -525,10 +520,8 @@ export default function SlipItemsTable({
             onClick={() => {
               if (confirm("입력한 내용을 모두 초기화하시겠습니까?")) {
                 setRows([emptyRow()]);
-                setOcrNote(null);
+                setImportNote(null);
                 setMessage(null);
-                if (previewUrl) URL.revokeObjectURL(previewUrl);
-                setPreviewUrl(null);
               }
             }}
             className="ml-auto rounded border border-red-300 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50"
@@ -538,12 +531,19 @@ export default function SlipItemsTable({
         </div>
       )}
 
-      <p className="text-sm font-medium text-gray-900">합계금액: {total.toLocaleString()}원</p>
+      <p className="text-sm font-medium text-gray-900">
+        합계금액(공급가액): {total.toLocaleString()}원
+        {taxType === "TAXABLE" && (
+          <>
+            {" · "}세액 합계: {totalTax.toLocaleString()}원 · 총액: {(total + totalTax).toLocaleString()}원
+          </>
+        )}
+      </p>
 
       {message && (
         <p className={`text-sm ${message.type === "error" ? "text-red-600" : "text-green-600"}`}>{message.text}</p>
       )}
-      
+
       {hasMismatch && !readOnly && (
         <p className="text-sm font-medium text-red-600">⚠️ 계약 내용과 다른 항목(빨간색 표시)을 계약과 동일하게 수정해야 저장할 수 있습니다.</p>
       )}
@@ -562,14 +562,12 @@ export default function SlipItemsTable({
             type="button"
             onClick={handleConfirm}
             disabled={pending || hasMismatch}
-            className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+            className="rounded bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
           >
             확정
           </button>
         </div>
       )}
-        </div>
-      </div>
     </div>
   );
 }
