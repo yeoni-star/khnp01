@@ -156,14 +156,14 @@ export async function GET(request: NextRequest) {
       sheet.getCell(r, 5).numFmt = "#,##0";
 
       if (taxType === "TAXABLE") {
-        // 6. 세액 (수식: ROUND(E * 0.1, 0)) - E열이 공급가액
-        sheet.getCell(r, 6).value = { formula: `ROUND(E${r}*0.1,0)` };
+        // 6. 세액 (공급가액이 있을 때만 자동계산, 빈값이면 빈칸)
+        sheet.getCell(r, 6).value = { formula: `IF(E${r}="","",ROUND(E${r}*0.1,0))` };
         sheet.getCell(r, 6).alignment = { horizontal: "right", vertical: "middle" };
         sheet.getCell(r, 6).numFmt = "#,##0";
         sheet.getCell(r, 6).fill = BOX_FILL;
 
-        // 7. 합계금액 (수식: E + F)
-        sheet.getCell(r, 7).value = { formula: `E${r}+F${r}` };
+        // 7. 합계금액 (공급가액이 있을 때만 자동계산, 빈값이면 빈칸)
+        sheet.getCell(r, 7).value = { formula: `IF(E${r}="","",E${r}+F${r})` };
         sheet.getCell(r, 7).alignment = { horizontal: "right", vertical: "middle" };
         sheet.getCell(r, 7).numFmt = "#,##0";
         sheet.getCell(r, 7).fill = BOX_FILL;
@@ -223,10 +223,11 @@ export async function GET(request: NextRequest) {
     }
 
     // 2.7 열 너비 세팅
-    sheet.getColumn(1).width = 8;   // 번호
-    sheet.getColumn(2).width = 28;  // 품명
-    sheet.getColumn(3).width = 12;  // 규격
-    sheet.getColumn(4).width = 14;  // 소요수량
+    // 업체정보 헤더(A열)는 '사업자등록번호' 글자가 들어가므로 넉넉하게
+    sheet.getColumn(1).width = 16;  // 번호/업체라벨 (사업자등록번호 텍스트 수용)
+    sheet.getColumn(2).width = 32;  // 품명/업체입력칸
+    sheet.getColumn(3).width = 14;  // 규격/직인라벨
+    sheet.getColumn(4).width = 14;  // 소요수량/직인박스
     sheet.getColumn(5).width = 18;  // 공급가액
     if (taxType === "TAXABLE") {
       sheet.getColumn(6).width = 16;  // 세액
