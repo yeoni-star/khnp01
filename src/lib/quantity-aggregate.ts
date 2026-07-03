@@ -1,11 +1,13 @@
 import { db } from "./db";
 import type { RestaurantCode } from "./restaurants";
 import type { CategoryCode } from "./categories";
+import type { TaxTypeCode } from "./tax";
 
 export type QuantityRow = {
   itemName: string;
   category: CategoryCode | null;
   unit: string;
+  taxType: TaxTypeCode;
   totalQuantity: number;
 };
 
@@ -13,18 +15,20 @@ export type QuantityInputRow = {
   itemName: string;
   category: CategoryCode | null;
   unit: string;
+  taxType: TaxTypeCode;
   quantity: number;
 };
 
-/** 순수 집계 함수: 소요수량 산출 - 단가/금액 없이 품목+단위별 수량만 합산 */
+/** 순수 집계 함수: 소요수량 산출 - 단가/금액 없이 품목+단위+세금유형별 수량만 합산 */
 export function aggregateQuantity(rows: QuantityInputRow[]): QuantityRow[] {
   const grouped = new Map<string, QuantityRow>();
   for (const row of rows) {
-    const key = `${row.itemName.trim().toLowerCase()}__${row.unit.trim().toLowerCase()}`;
+    const key = `${row.itemName.trim().toLowerCase()}__${row.unit.trim().toLowerCase()}__${row.taxType}`;
     const entry = grouped.get(key) ?? {
       itemName: row.itemName,
       category: row.category,
       unit: row.unit,
+      taxType: row.taxType,
       totalQuantity: 0,
     };
     entry.totalQuantity += row.quantity;
@@ -37,7 +41,7 @@ export async function buildQuantityReport(
   restaurant: RestaurantCode | "ALL",
   startDate: Date,
   endDate: Date,
-  filters?: { vendorId?: string; category?: CategoryCode }
+  filters?: { vendorId?: string; category?: CategoryCode; taxType?: TaxTypeCode }
 ): Promise<QuantityRow[]> {
   // 계약 단가표의 카테고리 맵핑 딕셔너리 구축
   const contractItems = await db.contractItem.findMany({
@@ -61,8 +65,10 @@ export async function buildQuantityReport(
         status: "CONFIRMED",
         deliveryDate: { gte: startDate, lte: endDate },
         ...(filters?.vendorId ? { vendorId: filters.vendorId } : {}),
+        ...(filters?.taxType ? { taxType: filters.taxType } : {}),
       },
     },
+    include: { slip: { select: { taxType: true } } },
   });
 
   let rows: QuantityInputRow[] = items.map((item) => {
@@ -73,6 +79,7 @@ export async function buildQuantityReport(
       itemName: item.itemName,
       category,
       unit: item.unit,
+      taxType: item.slip.taxType,
       quantity: item.quantity,
     };
   });

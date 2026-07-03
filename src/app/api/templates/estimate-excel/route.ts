@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
       restaurant,
       new Date(`${start}T00:00:00.000Z`),
       new Date(`${end}T23:59:59.999Z`),
-      { vendorId: vendorId || undefined, category }
+      { vendorId: vendorId || undefined, category, taxType }
     );
 
     // 2. ExcelJS Workbook 생성

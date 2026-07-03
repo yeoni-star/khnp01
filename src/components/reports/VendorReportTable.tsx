@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useState } from "react";
+import Link from "next/link";
 import PrintButton from "./PrintButton";
 import type { VendorReport, VendorReportItemRow } from "@/lib/vendor-report";
 import { TAX_TYPE_LABELS } from "@/lib/tax";
@@ -174,10 +175,20 @@ export default function VendorReportTable({
     { taxType: "EXEMPT" as const, items: report.exemptItems, supplySubtotal: report.exemptSupplyTotal, taxSubtotal: 0 },
   ].filter((s) => s.items.length > 0);
 
+  const listHref = `/reports?start=${startStr}&end=${endStr}${categoriesParam ? `&categories=${encodeURIComponent(categoriesParam)}` : ""}`;
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
-        <h1 className="text-lg font-semibold text-gray-900">납품보고서 - {vendorName}</h1>
+        <div className="flex items-center gap-3">
+          <Link
+            href={listHref}
+            className="rounded border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            ← 목록으로
+          </Link>
+          <h1 className="text-lg font-semibold text-gray-900">납품보고서 - {vendorName}</h1>
+        </div>
         <div className="flex flex-wrap items-center gap-2">
           {displayWeeks.map((week) => (
             <div

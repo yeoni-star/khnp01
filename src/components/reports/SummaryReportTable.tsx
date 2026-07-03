@@ -1,3 +1,4 @@
+import Link from "next/link";
 import PrintButton from "./PrintButton";
 import { CATEGORY_LABELS } from "@/lib/categories";
 import { TAX_TYPE_LABELS } from "@/lib/tax";
@@ -20,10 +21,20 @@ export default function SummaryReportTable({
   report: SummaryReport;
   selectedVendorCount?: number;
 }) {
+  const listHref = `/reports?start=${startStr}&end=${endStr}${categoriesParam ? `&categories=${encodeURIComponent(categoriesParam)}` : ""}`;
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between print:hidden">
-        <h1 className="text-lg font-semibold text-gray-900">전체 통합 요약 - {restaurantLabel}</h1>
+        <div className="flex items-center gap-3">
+          <Link
+            href={listHref}
+            className="rounded border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            ← 목록으로
+          </Link>
+          <h1 className="text-lg font-semibold text-gray-900">전체 통합 요약 - {restaurantLabel}</h1>
+        </div>
         <div className="flex gap-2">
           <PrintButton />
           <a
