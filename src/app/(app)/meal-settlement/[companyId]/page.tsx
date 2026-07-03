@@ -132,7 +132,7 @@ export default async function MealCompanyDetailPage({
                 <td className="px-4 py-3 text-gray-900 text-center font-medium">
                   {r.mealType === "LUNCH" ? "중식" : "석식"}
                 </td>
-                <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{r.restaurant === "MAIN" ? "본관" : "후문"}</td>
+                <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{r.restaurant === "A" ? "본관" : "후문"}</td>
                 <td className="px-4 py-3 text-gray-500 text-xs">
                   {r.submittedAt.toLocaleString("ko-KR", { 
                     year: 'numeric', month: '2-digit', day: '2-digit', 

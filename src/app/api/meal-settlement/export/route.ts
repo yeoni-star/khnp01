@@ -91,7 +91,7 @@ export async function GET(request: NextRequest) {
   const detailRows = registrations.map(r => ({
     mealDate: new Date(r.mealDate.getTime() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10),
     mealTypeLabel: r.mealType === "LUNCH" ? "중식" : "석식",
-    restaurantLabel: r.restaurant === "MAIN" ? "본관" : "후문",
+    restaurantLabel: r.restaurant === "A" ? "본관" : "후문",
     submitterName: r.submitterName,
     phone: r.phone,
     submittedAt: r.submittedAt.toLocaleString("ko-KR", { 
