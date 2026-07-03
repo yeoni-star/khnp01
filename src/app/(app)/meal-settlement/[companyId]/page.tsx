@@ -4,6 +4,7 @@ import { getSession } from "@/lib/session";
 import PrintButton from "@/components/reports/PrintButton";
 import Link from "next/link";
 import DateRangePicker from "@/components/common/DateRangePicker";
+import ExportButton from "./ExportButton";
 
 function getKstDateRange(startStr: string, endStr: string) {
   const start = new Date(`${startStr}T00:00:00+09:00`);
@@ -76,17 +77,7 @@ export default async function MealCompanyDetailPage({
         <h1 className="text-xl font-bold text-gray-900">{titleText}</h1>
         <div className="flex gap-2">
           <PrintButton />
-          <form action="/api/meal-settlement/export" method="GET" target="_blank" className="m-0 p-0">
-            <input type="hidden" name="companyId" value={companyId} />
-            <input type="hidden" name="start" value={startStr} />
-            <input type="hidden" name="end" value={endStr} />
-            <button
-              type="submit"
-              className="rounded bg-primary-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-primary-700 transition-colors"
-            >
-              엑셀로 내보내기
-            </button>
-          </form>
+          <ExportButton url={`/api/meal-settlement/export?companyId=${companyId}&start=${startStr}&end=${endStr}`} />
         </div>
       </div>
       <h1 className="hidden text-xl font-bold text-gray-900 print:block mb-4">{titleText}</h1>
