@@ -111,9 +111,29 @@ export default function VendorReportTable({
   }
 
   function handleRemoveCol(label: string, actualCount: number) {
+    const current = visibleCounts[label] !== undefined ? visibleCounts[label] : Math.max(3, actualCount);
+    if (current <= 0) return;
+
+    const targetIndex = current - 1;
+    const week = paddedWeeks.find((w) => w.label === label);
+    const targetDate = week?.dates[targetIndex];
+
+    if (targetDate && !targetDate.startsWith("empty-")) {
+      const hasTaxableData = report.taxableItems.some(
+        (item) => item.quantityByDate[targetDate] !== undefined && item.quantityByDate[targetDate] > 0
+      );
+      const hasExemptData = report.exemptItems.some(
+        (item) => item.quantityByDate[targetDate] !== undefined && item.quantityByDate[targetDate] > 0
+      );
+
+      if (hasTaxableData || hasExemptData) {
+        alert("데이터가 입력되어 있어 삭제 불가");
+        return;
+      }
+    }
+
     setVisibleCounts((prev) => {
-      const current = prev[label] !== undefined ? prev[label] : Math.max(3, actualCount);
-      return { ...prev, [label]: Math.max(0, current - 1) };
+      return { ...prev, [label]: current - 1 };
     });
   }
 
