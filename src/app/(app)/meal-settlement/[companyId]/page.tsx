@@ -109,15 +109,17 @@ export default async function MealCompanyDetailPage({
         <h1 className="text-xl font-bold text-gray-900">{titleText}</h1>
         <div className="flex gap-2">
           <PrintButton />
-          <a
-            href={`/api/meal-settlement/export?companyId=${companyId}&start=${startStr}&end=${endStr}`}
-            download={`meal_settlement_${startStr}_${endStr}.xlsx`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="rounded bg-primary-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-primary-700 transition-colors"
-          >
-            엑셀로 내보내기
-          </a>
+          <form action="/api/meal-settlement/export" method="GET" target="_blank" className="m-0 p-0">
+            <input type="hidden" name="companyId" value={companyId} />
+            <input type="hidden" name="start" value={startStr} />
+            <input type="hidden" name="end" value={endStr} />
+            <button
+              type="submit"
+              className="rounded bg-primary-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-primary-700 transition-colors"
+            >
+              엑셀로 내보내기
+            </button>
+          </form>
         </div>
       </div>
       <h1 className="hidden text-xl font-bold text-gray-900 print:block mb-4">{titleText}</h1>
