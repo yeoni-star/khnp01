@@ -12,6 +12,7 @@ type ActionResult =
       mealTypeLabel: string;
       companyName: string;
       restaurantLabel: string;
+      sequenceNumber: number;
     }
   | { ok: false; message: string };
 
@@ -58,12 +59,22 @@ export async function submitMealRegistration(input: {
     },
   });
 
+  const sequenceNumber = await db.mealRegistration.count({
+    where: {
+      mealDate,
+      mealType,
+      restaurant: parsed.data.restaurant as RestaurantCode,
+      submittedAt: { lte: now },
+    }
+  });
+
   return {
     ok: true,
     submittedAt: created.submittedAt.toISOString(),
     mealDate: todayStr,
-    mealTypeLabel: MEAL_TYPE_LABELS[mealType],
+    mealTypeLabel: MEAL_TYPE_LABELS[mealType as "LUNCH" | "DINNER"],
     companyName: company.name,
     restaurantLabel: RESTAURANT_LABELS[parsed.data.restaurant as RestaurantCode],
+    sequenceNumber,
   };
 }
