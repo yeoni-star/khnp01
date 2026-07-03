@@ -201,6 +201,7 @@ export default function SlipItemsTable({
     contractItemId: string | null;
     source: "계약단가" | "미등록";
   }) {
+    if (readOnly) return;
     let targetKey = activeRowKey;
     let targetRow = rows.find((r) => r.key === targetKey);
 
@@ -428,9 +429,9 @@ export default function SlipItemsTable({
   }, [searchPool, searchQuery]);
 
   return (
-    <div className="lg:grid lg:grid-cols-4 lg:gap-4 space-y-4 lg:space-y-0">
+    <div className="grid grid-cols-4 gap-4">
       {/* 왼쪽 메인 입력 폼 영역 */}
-      <div className="lg:col-span-3 space-y-4">
+      <div className="col-span-3 space-y-4">
         {!readOnly && (
           <div className="rounded-md border border-gray-200 bg-white p-4 shadow-sm">
             <div className="flex items-center justify-between border-b pb-2 mb-3">
@@ -691,6 +692,64 @@ export default function SlipItemsTable({
             </button>
           </div>
         )}
+      </div>
+
+      {/* 오른쪽 검색 도우미 패널 영역 */}
+      <div className="col-span-1">
+        <div className="sticky top-6 rounded-md border border-gray-200 bg-white p-4 shadow-sm h-[calc(100vh-8rem)] max-h-[600px] flex flex-col">
+          <div className="border-b pb-2 mb-3">
+            <h3 className="text-sm font-bold text-gray-800">🔍 품목 검색 도우미</h3>
+            <p className="text-[11px] text-gray-500 mt-1">
+              {readOnly
+                ? "확정된 명세표는 수정 불가합니다. (단가 및 규격 조회용)"
+                : "입력하려는 품명 칸을 먼저 마우스로 클릭(포커싱)한 뒤, 아래 검색 결과에서 품목을 클릭하면 자동 입력됩니다."}
+            </p>
+          </div>
+
+          <div className="mb-3">
+            <input
+              type="text"
+              placeholder="품명 키워드 검색..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full rounded border border-gray-300 px-3 py-2 text-xs focus:border-primary-500 focus:outline-none"
+            />
+          </div>
+
+          <div className="flex-1 overflow-y-auto divide-y divide-gray-100 pr-1">
+            {filteredSearchItems.map((item) => (
+              <button
+                key={item.key}
+                type="button"
+                disabled={readOnly}
+                onClick={() => handleSelectSearchItem(item)}
+                className={`w-full text-left py-2 px-1 transition rounded flex flex-col gap-0.5 ${
+                  readOnly
+                    ? "cursor-not-allowed opacity-75"
+                    : "hover:bg-gray-50 cursor-pointer"
+                }`}
+              >
+                <div className="flex items-center gap-1.5">
+                  <span
+                    className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                      item.source === "계약단가" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
+                    }`}
+                  >
+                    {item.source}
+                  </span>
+                  <span className="text-xs font-bold text-gray-800 line-clamp-1">{item.name}</span>
+                </div>
+                <div className="text-[10px] text-gray-500 flex justify-between">
+                  <span>규격: {item.unit || "-"}</span>
+                  <span className="font-semibold text-gray-700">₩{item.price.toLocaleString()}</span>
+                </div>
+              </button>
+            ))}
+            {filteredSearchItems.length === 0 && (
+              <p className="text-xs text-gray-400 text-center py-8">검색 결과가 존재하지 않습니다.</p>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
