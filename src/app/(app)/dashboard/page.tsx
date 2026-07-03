@@ -25,10 +25,10 @@ export default async function DashboardPage() {
   ];
 
   const quickLinks = [
-    { label: "새 거래명세표 입력", href: "/slips/new" },
-    { label: "계약/단가표 등록", href: "/contracts/new" },
-    { label: "기간별 납품보고서 보기", href: "/reports" },
-    { label: "소요수량 산출", href: "/required-quantity" },
+    { label: "거래명세표 입력", href: "/slips/new" },
+    { label: "검수일지", href: "/inspection" },
+    { label: "납품보고서", href: "/reports" },
+    { label: "식수 정산하기", href: "/meal-settlement" },
   ];
 
   return (
