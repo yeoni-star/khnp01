@@ -2,6 +2,7 @@ import Link from "next/link";
 import { db } from "@/lib/db";
 import { getSession } from "@/lib/session";
 import { TAX_TYPE_LABELS } from "@/lib/tax";
+import CopySlipButton from "@/components/slips/CopySlipButton";
 
 export default async function SlipsPage() {
   const session = await getSession();
@@ -59,9 +60,12 @@ export default async function SlipsPage() {
                     </span>
                   </td>
                   <td className="px-4 py-2 text-right">
-                    <Link href={`/slips/${s.id}`} className="text-primary-600 hover:underline">
-                      상세
-                    </Link>
+                    <div className="flex justify-end gap-3">
+                      <CopySlipButton slipId={s.id} />
+                      <Link href={`/slips/${s.id}`} className="text-primary-600 hover:underline">
+                        상세
+                      </Link>
+                    </div>
                   </td>
                 </tr>
               );

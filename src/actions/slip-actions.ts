@@ -150,3 +150,49 @@ export async function deleteSlip(slipId: string): Promise<ActionResult> {
   revalidatePath("/slips");
   return { ok: true };
 }
+
+export async function copySlip(slipId: string): Promise<ActionResult & { newId?: string }> {
+  const session = await requireSession();
+
+  try {
+    const original = await db.deliverySlip.findUnique({
+      where: { id: slipId },
+      include: { items: true },
+    });
+
+    if (!original) {
+      return { ok: false, message: "원본 거래명세표를 찾을 수 없습니다." };
+    }
+
+    const newSlip = await db.deliverySlip.create({
+      data: {
+        restaurant: session.restaurant,
+        vendorId: original.vendorId,
+        taxType: original.taxType,
+        deliveryDate: new Date(),
+        status: "DRAFT",
+        sourceType: "MANUAL",
+        items: {
+          create: original.items.map((item) => ({
+            itemName: item.itemName,
+            category: item.category,
+            unit: item.unit,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+            amount: item.amount,
+            taxAmount: item.taxAmount,
+            matchedContractItemId: item.matchedContractItemId,
+            matchType: item.matchType,
+            priceOverridden: item.priceOverridden,
+          })),
+        },
+      },
+    });
+
+    revalidatePath("/slips");
+    return { ok: true, newId: newSlip.id };
+  } catch (error: any) {
+    console.error("Copy slip error:", error);
+    return { ok: false, message: "복사 생성 중 오류가 발생했습니다." };
+  }
+}
