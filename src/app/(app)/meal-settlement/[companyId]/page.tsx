@@ -48,6 +48,7 @@ export default async function MealCompanyDetailPage({
 
   let lunchCount = 0;
   let dinnerCount = 0;
+  let attendedCount = 0;
 
   for (const r of registrations) {
     if (r.mealType === "LUNCH") {
@@ -55,6 +56,7 @@ export default async function MealCompanyDetailPage({
     } else {
       dinnerCount++;
     }
+    if (r.attended) attendedCount++;
   }
 
   const price = company.pricePerMeal;
@@ -107,6 +109,10 @@ export default async function MealCompanyDetailPage({
         </div>
       </div>
 
+      <p className="text-sm text-gray-500">
+        출석 확인 {attendedCount}명 / 전체 등록 {totalCount}명 (합계금액은 출석 여부와 무관하게 전체 등록 기준으로 계산됩니다)
+      </p>
+
       <div className="overflow-hidden rounded-md border border-gray-200 bg-white shadow-sm">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 text-left text-xs font-medium text-gray-500">
@@ -118,6 +124,7 @@ export default async function MealCompanyDetailPage({
               <th className="px-4 py-3 text-center whitespace-nowrap">구분</th>
               <th className="px-4 py-3 whitespace-nowrap">식당</th>
               <th className="px-4 py-3 whitespace-nowrap">제출시각</th>
+              <th className="px-4 py-3 text-center whitespace-nowrap">출석</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -134,16 +141,25 @@ export default async function MealCompanyDetailPage({
                 </td>
                 <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{r.restaurant === "A" ? "본관" : "후문"}</td>
                 <td className="px-4 py-3 text-gray-500 text-xs">
-                  {r.submittedAt.toLocaleString("ko-KR", { 
-                    year: 'numeric', month: '2-digit', day: '2-digit', 
-                    hour: '2-digit', minute:'2-digit', second:'2-digit' 
+                  {r.submittedAt.toLocaleString("ko-KR", {
+                    year: 'numeric', month: '2-digit', day: '2-digit',
+                    hour: '2-digit', minute:'2-digit', second:'2-digit'
                   })}
+                </td>
+                <td className="px-4 py-3 text-center">
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                      r.attended ? "bg-primary-100 text-primary-700" : "bg-gray-100 text-gray-500"
+                    }`}
+                  >
+                    {r.attended ? "출석" : "미출석"}
+                  </span>
                 </td>
               </tr>
             ))}
             {registrations.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={8} className="px-4 py-8 text-center text-gray-400">
                   해당 기간에 등록된 식사가 없습니다.
                 </td>
               </tr>

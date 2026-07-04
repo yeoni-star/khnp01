@@ -210,6 +210,7 @@ model MealRegistration {
   mealType      MealType
   mealDate      DateTime
   submittedAt   DateTime    @default(now())
+  attended      Boolean     @default(false)
 
   @@index([restaurant, mealDate])
   @@index([companyId, mealDate])
@@ -224,4 +225,18 @@ model MealTimeSettings {
   dinnerStart      String   @default("17:00")
   dinnerEnd        String   @default("19:30")
   updatedAt        DateTime @updatedAt
+}
+
+/** 특정 날짜(KST 기준 자정 UTC로 정규화) x 식당(A/B) x 끼니(LUNCH/DINNER)별 운영 여부.
+ * 레코드가 없으면 운영(true)으로 간주한다. 지난 날짜 레코드는 조회 시점에 자동으로 삭제된다. */
+model MealDailySchedule {
+  id         String     @id @default(cuid())
+  date       DateTime
+  restaurant Restaurant
+  mealType   MealType
+  enabled    Boolean    @default(true)
+  updatedAt  DateTime   @updatedAt
+
+  @@unique([date, restaurant, mealType])
+  @@index([date])
 }

@@ -16,6 +16,7 @@ export async function buildMealSettlementWorkbook(params: {
     dinnerCount: number;
     totalCount: number;
     totalAmount: number;
+    attendedCount: number;
   }[];
   detailRows: {
     mealDate: string;
@@ -24,6 +25,7 @@ export async function buildMealSettlementWorkbook(params: {
     submitterName: string;
     phone: string;
     submittedAt: string;
+    attendedLabel: string;
   }[];
 }): Promise<ExcelJS.Buffer> {
   const { companyName, monthLabel, pricePerMeal, totalLunchCount, totalDinnerCount, summaryRows, detailRows } = params;
@@ -34,7 +36,7 @@ export async function buildMealSettlementWorkbook(params: {
   // ----------------------------------------------------
   const sheet1 = workbook.addWorksheet("정산 요약");
 
-  const totalCols1 = 7;
+  const totalCols1 = 8;
   const grandTotalCount = totalLunchCount + totalDinnerCount;
   const grandTotalAmount = grandTotalCount * pricePerMeal;
 
@@ -46,15 +48,15 @@ export async function buildMealSettlementWorkbook(params: {
 
   sheet1.mergeCells(2, 1, 2, 2);
   sheet1.getCell(2, 1).value = `1식 단가 : ${pricePerMeal.toLocaleString()}원`;
-  
+
   sheet1.mergeCells(2, 3, 2, 5);
   sheet1.getCell(2, 3).value = `중식: ${totalLunchCount}명 / 석식: ${totalDinnerCount}명`;
-  
-  sheet1.mergeCells(2, 6, 2, 7);
+
+  sheet1.mergeCells(2, 6, 2, 8);
   sheet1.getCell(2, 6).value = `총 합계 : ${grandTotalCount}명 / ${grandTotalAmount.toLocaleString()}원`;
 
   const headerRow1 = 4;
-  const headers1 = ["번호", "이름", "연락처", "중식 이용", "석식 이용", "총 이용건수", "정산 합계"];
+  const headers1 = ["번호", "이름", "연락처", "중식 이용", "석식 이용", "총 이용건수", "출석", "정산 합계"];
   headers1.forEach((label, i) => {
     const cell = sheet1.getCell(headerRow1, i + 1);
     cell.value = label;
@@ -73,6 +75,7 @@ export async function buildMealSettlementWorkbook(params: {
       `${row.lunchCount}회`,
       `${row.dinnerCount}회`,
       `${row.totalCount}건`,
+      `${row.attendedCount}/${row.totalCount}`,
       `${row.totalAmount.toLocaleString()}원`,
     ];
     values.forEach((value, c) => {
@@ -81,7 +84,7 @@ export async function buildMealSettlementWorkbook(params: {
       if (c === 0 || c >= 3) {
         cell.alignment = { horizontal: "center" };
       }
-      if (c === 6) {
+      if (c === 7) {
         cell.alignment = { horizontal: "right" };
       }
     });
@@ -104,14 +107,15 @@ export async function buildMealSettlementWorkbook(params: {
   sheet1.getColumn(4).width = 12;
   sheet1.getColumn(5).width = 12;
   sheet1.getColumn(6).width = 12;
-  sheet1.getColumn(7).width = 16;
+  sheet1.getColumn(7).width = 10;
+  sheet1.getColumn(8).width = 16;
 
   // ----------------------------------------------------
   // Sheet 2: 상세 내역 (Detail List)
   // ----------------------------------------------------
   const sheet2 = workbook.addWorksheet("상세 내역");
 
-  const totalCols2 = 7;
+  const totalCols2 = 8;
   sheet2.mergeCells(1, 1, 1, totalCols2);
   const titleCell2 = sheet2.getCell(1, 1);
   titleCell2.value = `${companyName} 식수 상세 내역 (${monthLabel})`;
@@ -119,7 +123,7 @@ export async function buildMealSettlementWorkbook(params: {
   titleCell2.alignment = { horizontal: "center" };
 
   const headerRow2 = 3;
-  const headers2 = ["번호", "이름", "연락처", "날짜", "구분", "식당", "제출시각"];
+  const headers2 = ["번호", "이름", "연락처", "날짜", "구분", "식당", "제출시각", "출석"];
   headers2.forEach((label, i) => {
     const cell = sheet2.getCell(headerRow2, i + 1);
     cell.value = label;
@@ -139,6 +143,7 @@ export async function buildMealSettlementWorkbook(params: {
       row.mealTypeLabel,
       row.restaurantLabel,
       row.submittedAt,
+      row.attendedLabel,
     ];
     values.forEach((value, c) => {
       const cell = sheet2.getCell(rowIdx2, c + 1);
@@ -165,6 +170,7 @@ export async function buildMealSettlementWorkbook(params: {
   sheet2.getColumn(5).width = 8;
   sheet2.getColumn(6).width = 8;
   sheet2.getColumn(7).width = 20;
+  sheet2.getColumn(8).width = 8;
 
   return workbook.xlsx.writeBuffer();
 }

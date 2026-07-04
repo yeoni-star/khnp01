@@ -50,6 +50,7 @@ export async function GET(request: NextRequest) {
     phone: string;
     lunchCount: number;
     dinnerCount: number;
+    attendedCount: number;
     details: string[];
   }>();
 
@@ -60,9 +61,10 @@ export async function GET(request: NextRequest) {
       phone: r.phone,
       lunchCount: 0,
       dinnerCount: 0,
+      attendedCount: 0,
       details: [],
     };
-    
+
     const dateStr = r.mealDate.toISOString().slice(0, 10);
     const mmdd = dateStr.slice(5, 10).replace("-", ".");
     const typeLabel = r.mealType === "LUNCH" ? "중" : "석";
@@ -75,6 +77,7 @@ export async function GET(request: NextRequest) {
       entry.dinnerCount++;
       totalDinnerCount++;
     }
+    if (r.attended) entry.attendedCount++;
     userMap.set(key, entry);
   }
 
@@ -94,10 +97,11 @@ export async function GET(request: NextRequest) {
     restaurantLabel: r.restaurant === "A" ? "본관" : "후문",
     submitterName: r.submitterName,
     phone: r.phone,
-    submittedAt: r.submittedAt.toLocaleString("ko-KR", { 
-      year: 'numeric', month: '2-digit', day: '2-digit', 
-      hour: '2-digit', minute:'2-digit', second:'2-digit' 
+    submittedAt: r.submittedAt.toLocaleString("ko-KR", {
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute:'2-digit', second:'2-digit'
     }),
+    attendedLabel: r.attended ? "출석" : "미출석",
   }));
 
   const buffer = await buildMealSettlementWorkbook({

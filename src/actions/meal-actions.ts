@@ -71,3 +71,11 @@ export async function deleteMealCompany(id: string): Promise<ActionResult> {
   revalidateMealPaths();
   return { ok: true };
 }
+
+export async function setMealRegistrationAttendance(id: string, attended: boolean): Promise<ActionResult> {
+  await requireSession();
+  await db.mealRegistration.update({ where: { id }, data: { attended } });
+  revalidatePath("/meal-checkin");
+  revalidateMealPaths();
+  return { ok: true };
+}

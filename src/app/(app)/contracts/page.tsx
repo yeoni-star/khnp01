@@ -110,12 +110,20 @@ export default async function ContractsPage() {
             업체별 계약기간과 품목 단가표를 관리합니다. (계약/단가는 본관/후문 공통)
           </p>
         </div>
-        <Link
-          href="/contracts/new"
-          className="rounded bg-primary-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-primary-700"
-        >
-          새 계약 등록
-        </Link>
+        <div className="flex gap-2">
+          <Link
+            href="/required-quantity"
+            className="rounded border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            소요수량 산출
+          </Link>
+          <Link
+            href="/contracts/new"
+            className="rounded bg-primary-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-primary-700"
+          >
+            새 계약 등록
+          </Link>
+        </div>
       </div>
 
       <div className="space-y-2">

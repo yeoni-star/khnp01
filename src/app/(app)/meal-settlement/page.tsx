@@ -80,12 +80,20 @@ export default async function MealSettlementPage({
           <h1 className="text-lg font-semibold text-gray-900">식수 정산</h1>
           <p className="mt-1 text-sm text-gray-600">외부업체 식사 등록 현황을 지정한 기간 동안 집계합니다.</p>
         </div>
-        <Link
-          href="/meal-settlement/companies"
-          className="rounded border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
-        >
-          업체 관리
-        </Link>
+        <div className="flex gap-2">
+          <Link
+            href="/meal-checkin"
+            className="rounded border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            체크인 화면
+          </Link>
+          <Link
+            href="/meal-settlement/companies"
+            className="rounded border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            업체 관리
+          </Link>
+        </div>
       </div>
 
       <DateRangePicker 

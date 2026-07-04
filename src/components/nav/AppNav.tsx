@@ -10,7 +10,6 @@ const NAV_ITEMS = [
   { href: "/inspection", label: "검수일지" },
   { href: "/meal-settlement", label: "식수 정산" },
   { href: "/reports", label: "기간별 납품보고서" },
-  { href: "/required-quantity", label: "소요수량 산출" },
 ];
 
 export default function AppNav({ restaurant }: { restaurant: RestaurantCode }) {

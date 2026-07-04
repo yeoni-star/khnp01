@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useRef, type FormEvent } from "react";
+import { useState, useTransition, useRef, type FormEvent, type RefObject } from "react";
 import { submitMealRegistration } from "@/actions/meal-public-actions";
 import { RESTAURANTS, RESTAURANT_LABELS, type RestaurantCode } from "@/lib/restaurants";
 import html2canvas from "html2canvas";
@@ -21,15 +21,33 @@ export default function MealRegisterForm({ companies }: { companies: Company[] }
   const [restaurant, setRestaurant] = useState<RestaurantCode>("A");
   const [companyId, setCompanyId] = useState("");
   const [submitterName, setSubmitterName] = useState("");
-  const [phone, setPhone] = useState("");
+  const [phone1, setPhone1] = useState("010");
+  const [phone2, setPhone2] = useState("");
+  const [phone3, setPhone3] = useState("");
+  const phone2Ref = useRef<HTMLInputElement>(null);
+  const phone3Ref = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [result, setResult] = useState<SubmittedInfo | null>(null);
   const captureRef = useRef<HTMLDivElement>(null);
 
+  function handlePhonePartChange(
+    value: string,
+    setter: (v: string) => void,
+    maxLen: number,
+    nextRef?: RefObject<HTMLInputElement | null>
+  ) {
+    const digits = value.replace(/\D/g, "").slice(0, maxLen);
+    setter(digits);
+    if (nextRef && digits.length === maxLen) {
+      nextRef.current?.focus();
+    }
+  }
+
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
+    const phone = `${phone1}-${phone2}-${phone3}`;
     startTransition(async () => {
       const res = await submitMealRegistration({ restaurant, companyId, submitterName, phone });
       if (!res.ok) {
@@ -118,7 +136,9 @@ export default function MealRegisterForm({ companies }: { companies: Company[] }
             onClick={() => {
               setResult(null);
               setSubmitterName("");
-              setPhone("");
+              setPhone1("010");
+              setPhone2("");
+              setPhone3("");
               setCompanyId("");
             }}
             className="flex-1 rounded-md border border-gray-300 bg-white py-3 text-sm font-bold text-gray-700 hover:bg-gray-50 shadow-sm transition-colors"
@@ -189,25 +209,53 @@ export default function MealRegisterForm({ companies }: { companies: Company[] }
       </div>
 
       <div>
-        <label htmlFor="phone" className="mb-1 block text-sm font-medium text-gray-700">
+        <label htmlFor="phone1" className="mb-1 block text-sm font-medium text-gray-700">
           연락처
         </label>
-        <input
-          id="phone"
-          type="tel"
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-          placeholder="010-0000-0000"
-          required
-          className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
-        />
+        <div className="flex items-center gap-2">
+          <input
+            id="phone1"
+            type="tel"
+            inputMode="numeric"
+            autoComplete="off"
+            value={phone1}
+            onChange={(e) => handlePhonePartChange(e.target.value, setPhone1, 3, phone2Ref)}
+            maxLength={3}
+            required
+            className="w-16 rounded border border-gray-300 px-2 py-2 text-center text-sm"
+          />
+          <span className="text-gray-400">-</span>
+          <input
+            ref={phone2Ref}
+            type="tel"
+            inputMode="numeric"
+            autoComplete="off"
+            value={phone2}
+            onChange={(e) => handlePhonePartChange(e.target.value, setPhone2, 4, phone3Ref)}
+            maxLength={4}
+            required
+            className="w-20 rounded border border-gray-300 px-2 py-2 text-center text-sm"
+          />
+          <span className="text-gray-400">-</span>
+          <input
+            ref={phone3Ref}
+            type="tel"
+            inputMode="numeric"
+            autoComplete="off"
+            value={phone3}
+            onChange={(e) => handlePhonePartChange(e.target.value, setPhone3, 4)}
+            maxLength={4}
+            required
+            className="w-20 rounded border border-gray-300 px-2 py-2 text-center text-sm"
+          />
+        </div>
       </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
       <button
         type="submit"
-        disabled={pending || !companyId}
+        disabled={pending || !companyId || !phone1 || !phone2 || !phone3}
         className="w-full rounded-md bg-primary-600 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
       >
         {pending ? "제출 중..." : "제출"}
