@@ -262,7 +262,7 @@ export default function InspectionLogTable({
       </div>
 
       <div className="overflow-x-auto rounded-md border border-gray-200 bg-white print:overflow-visible print:rounded-none print:border-0">
-        <table className="w-full min-w-max border-collapse text-sm print:text-[10px]">
+        <table className="w-full min-w-max table-fixed border-collapse text-sm print:text-[10px]">
           <thead className="bg-gray-50 text-left text-xs font-medium text-gray-500 print:text-[10px]">
             <tr>
               <th className="border border-gray-300 px-2 py-2 align-top print:px-1 print:py-0.5" style={{ width: colWidths.name }}>
@@ -377,7 +377,7 @@ export default function InspectionLogTable({
                   </div>
                 </th>
               ))}
-              {!readOnly && <th className="border border-gray-300 px-2 py-2 print:hidden" />}
+              {!readOnly && <th className="border border-gray-300 px-2 py-2 print:hidden" style={{ width: 48 }} />}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">

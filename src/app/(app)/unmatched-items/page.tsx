@@ -44,7 +44,7 @@ export default async function UnmatchedItemsPage(props: {
     where: { vendorId: { in: vendorIds } },
   });
 
-  const rows = items.map((item) => {
+  const rows = items.map((item, index) => {
     // Find active contract for this vendor on the delivery date
     const dDate = item.slip.deliveryDate;
     const activeContract = contracts.find(
@@ -55,6 +55,7 @@ export default async function UnmatchedItemsPage(props: {
     const itemRestaurantLabel = item.slip.restaurant === "A" ? "본관" : "후문";
 
     return {
+      순번: index + 1,
       식당: itemRestaurantLabel,
       납품일자: item.slip.deliveryDate.toISOString().slice(0, 10),
       품명: item.itemName,
@@ -82,6 +83,7 @@ export default async function UnmatchedItemsPage(props: {
         <table className="w-full text-sm">
           <thead className="bg-gray-50 text-left text-xs font-medium text-gray-500">
             <tr>
+              <th className="px-4 py-2 text-center w-16">순번</th>
               <th className="px-4 py-2">식당</th>
               <th className="px-4 py-2">납품일자</th>
               <th className="px-4 py-2">품명</th>
@@ -93,6 +95,7 @@ export default async function UnmatchedItemsPage(props: {
           <tbody className="divide-y divide-gray-100">
             {rows.map((row, index) => (
               <tr key={index}>
+                <td className="px-4 py-2 text-center text-gray-500">{row.순번}</td>
                 <td className="px-4 py-2 text-gray-900">{row.식당}</td>
                 <td className="px-4 py-2 text-gray-900">{row.납품일자}</td>
                 <td className="px-4 py-2 font-medium text-gray-900">{row.품명}</td>
@@ -103,7 +106,7 @@ export default async function UnmatchedItemsPage(props: {
             ))}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-6 text-center text-gray-400">
+                <td colSpan={7} className="px-4 py-6 text-center text-gray-400">
                   해당 조건에 미등록 품목이 없습니다.
                 </td>
               </tr>

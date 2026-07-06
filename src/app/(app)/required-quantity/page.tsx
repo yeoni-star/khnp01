@@ -52,7 +52,8 @@ export default async function RequiredQuantityPage({
     { vendorId: vendorId || undefined, category, taxType }
   );
 
-  const exportData = rows.map((r) => ({
+  const exportData = rows.map((r, index) => ({
+    순번: index + 1,
     식당: RESTAURANT_LABELS[r.restaurant],
     품명: r.itemName,
     카테고리: r.category ? CATEGORY_LABELS[r.category] : "-",
@@ -178,6 +179,7 @@ export default async function RequiredQuantityPage({
         <table className="w-full text-sm">
           <thead className="bg-gray-50 text-left text-xs font-medium text-gray-500">
             <tr>
+              <th className="px-4 py-2 text-center w-16">순번</th>
               <th className="px-4 py-2">식당</th>
               <th className="px-4 py-2">품명</th>
               <th className="px-4 py-2">카테고리</th>
@@ -187,8 +189,9 @@ export default async function RequiredQuantityPage({
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {rows.map((row) => (
+            {rows.map((row, index) => (
               <tr key={`${row.itemName}-${row.unit}-${row.taxType}-${row.restaurant}`}>
+                <td className="px-4 py-2 text-center text-gray-500">{index + 1}</td>
                 <td className="px-4 py-2 text-gray-600">{RESTAURANT_LABELS[row.restaurant]}</td>
                 <td className="px-4 py-2 font-medium text-gray-900">{row.itemName}</td>
                 <td className="px-4 py-2 text-gray-600">{row.category ? CATEGORY_LABELS[row.category] : "-"}</td>
@@ -199,7 +202,7 @@ export default async function RequiredQuantityPage({
             ))}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-6 text-center text-gray-400">
+                <td colSpan={7} className="px-4 py-6 text-center text-gray-400">
                   해당 기간에 확정된 납품 내역이 없습니다.
                 </td>
               </tr>
