@@ -20,6 +20,51 @@ type Row = {
   values: Record<string, string>;
 };
 
+const WIDTH_STEP = 8;
+const MIN_COL_WIDTH = 24;
+type FixedColumn = "name" | "unit" | "qty" | "vendor";
+const DEFAULT_FIXED_WIDTHS: Record<FixedColumn, number> = {
+  name: 140,
+  unit: 48,
+  qty: 56,
+  vendor: 88,
+};
+
+function defaultWidthForColumn(column: InspectionColumn): number {
+  if (column.type === "CHECK") return 56;
+  if (column.type === "DATE") return 112;
+  return 96;
+}
+
+function buildDefaultColWidths(columns: InspectionColumn[]): Record<string, number> {
+  const widths: Record<string, number> = { ...DEFAULT_FIXED_WIDTHS };
+  for (const col of columns) {
+    widths[col.key] = defaultWidthForColumn(col);
+  }
+  return widths;
+}
+
+function ColumnResizeButtons({ onDecrease, onIncrease }: { onDecrease: () => void; onIncrease: () => void }) {
+  return (
+    <span className="flex items-center gap-0.5 print:hidden">
+      <button
+        type="button"
+        onClick={onDecrease}
+        className="flex h-4 w-4 items-center justify-center rounded bg-gray-200 text-xs text-gray-600 hover:bg-gray-300"
+      >
+        -
+      </button>
+      <button
+        type="button"
+        onClick={onIncrease}
+        className="flex h-4 w-4 items-center justify-center rounded bg-gray-200 text-xs text-gray-600 hover:bg-gray-300"
+      >
+        +
+      </button>
+    </span>
+  );
+}
+
 let rowKeySeq = 0;
 function newRowKey() {
   rowKeySeq += 1;
@@ -71,6 +116,15 @@ export default function InspectionLogTable({
   const [message, setMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
   const [pending, startTransition] = useTransition();
   const [importing, setImporting] = useState(false);
+  const [colWidths, setColWidths] = useState<Record<string, number>>(() => buildDefaultColWidths(columns));
+  const [bulkInputs, setBulkInputs] = useState<Record<string, string>>({});
+
+  function adjustWidth(key: string, delta: number) {
+    setColWidths((prev) => ({
+      ...prev,
+      [key]: Math.max(MIN_COL_WIDTH, (prev[key] ?? 96) + delta),
+    }));
+  }
 
   function setCellValue(key: string, columnKey: string, value: string) {
     setRows((prev) =>
@@ -80,6 +134,12 @@ export default function InspectionLogTable({
 
   function fillColumn(columnKey: string, value: string) {
     setRows((prev) => prev.map((r) => ({ ...r, values: { ...r.values, [columnKey]: value } })));
+  }
+
+  function applyBulkValue(columnKey: string) {
+    const value = bulkInputs[columnKey] ?? "";
+    if (!value) return;
+    fillColumn(columnKey, value);
   }
 
   function removeRow(key: string) {
@@ -156,7 +216,7 @@ export default function InspectionLogTable({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 print:mx-auto print:max-w-[210mm]">
       {readOnly ? (
         <div className="rounded-md border border-primary-200 bg-primary-50 px-3 py-2 text-xs font-medium text-primary-700 print:hidden">
           확정된 검수일지입니다. 수정하려면 아래 &apos;수정&apos; 버튼을 눌러 확정을 취소해 주세요.
@@ -201,18 +261,66 @@ export default function InspectionLogTable({
         )}
       </div>
 
-      <div className="overflow-x-auto rounded-md border border-gray-200 bg-white">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50 text-left text-xs font-medium text-gray-500">
+      <div className="overflow-x-auto rounded-md border border-gray-200 bg-white print:overflow-visible print:rounded-none print:border-0">
+        <table className="w-full min-w-max border-collapse text-sm print:text-[10px]">
+          <thead className="bg-gray-50 text-left text-xs font-medium text-gray-500 print:text-[10px]">
             <tr>
-              <th className="px-2 py-2">품목명</th>
-              <th className="px-2 py-2">단위</th>
-              <th className="px-2 py-2">수량</th>
-              <th className="px-2 py-2">납품업체</th>
+              <th className="border border-gray-300 px-2 py-2 align-top print:px-1 print:py-0.5" style={{ width: colWidths.name }}>
+                <div className="flex items-center justify-between gap-2">
+                  <span>품목명</span>
+                  {!readOnly && (
+                    <ColumnResizeButtons
+                      onDecrease={() => adjustWidth("name", -WIDTH_STEP)}
+                      onIncrease={() => adjustWidth("name", WIDTH_STEP)}
+                    />
+                  )}
+                </div>
+              </th>
+              <th className="border border-gray-300 px-2 py-2 align-top print:px-1 print:py-0.5" style={{ width: colWidths.unit }}>
+                <div className="flex items-center justify-between gap-2">
+                  <span>단위</span>
+                  {!readOnly && (
+                    <ColumnResizeButtons
+                      onDecrease={() => adjustWidth("unit", -WIDTH_STEP)}
+                      onIncrease={() => adjustWidth("unit", WIDTH_STEP)}
+                    />
+                  )}
+                </div>
+              </th>
+              <th className="border border-gray-300 px-2 py-2 align-top print:px-1 print:py-0.5" style={{ width: colWidths.qty }}>
+                <div className="flex items-center justify-between gap-2">
+                  <span>수량</span>
+                  {!readOnly && (
+                    <ColumnResizeButtons
+                      onDecrease={() => adjustWidth("qty", -WIDTH_STEP)}
+                      onIncrease={() => adjustWidth("qty", WIDTH_STEP)}
+                    />
+                  )}
+                </div>
+              </th>
+              <th className="border border-gray-300 px-2 py-2 align-top print:px-1 print:py-0.5" style={{ width: colWidths.vendor }}>
+                <div className="flex items-center justify-between gap-2">
+                  <span>납품업체</span>
+                  {!readOnly && (
+                    <ColumnResizeButtons
+                      onDecrease={() => adjustWidth("vendor", -WIDTH_STEP)}
+                      onIncrease={() => adjustWidth("vendor", WIDTH_STEP)}
+                    />
+                  )}
+                </div>
+              </th>
               {columns.map((col) => (
-                <th key={col.key} className="px-2 py-2">
-                  <div className="flex items-center gap-2">
-                    <span>{col.label}</span>
+                <th key={col.key} className="border border-gray-300 px-2 py-2 align-top print:px-1 print:py-0.5" style={{ width: colWidths[col.key] }}>
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <span>{col.label}</span>
+                      {!readOnly && (
+                        <ColumnResizeButtons
+                          onDecrease={() => adjustWidth(col.key, -WIDTH_STEP)}
+                          onIncrease={() => adjustWidth(col.key, WIDTH_STEP)}
+                        />
+                      )}
+                    </div>
                     {col.type === "CHECK" && !readOnly && (
                       <span className="flex gap-1 print:hidden">
                         <button
@@ -231,42 +339,86 @@ export default function InspectionLogTable({
                         </button>
                       </span>
                     )}
+                    {col.type === "DATE" && !readOnly && (
+                      <span className="flex items-center gap-1 print:hidden">
+                        <input
+                          type="date"
+                          value={bulkInputs[col.key] ?? ""}
+                          onChange={(e) => setBulkInputs((prev) => ({ ...prev, [col.key]: e.target.value }))}
+                          className="w-full min-w-0 rounded border border-gray-300 px-1 py-0.5 text-[11px] font-normal text-gray-700"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => applyBulkValue(col.key)}
+                          className="shrink-0 rounded border border-gray-300 bg-white px-1.5 py-0.5 text-[11px] font-normal text-gray-600 hover:bg-gray-100"
+                        >
+                          일괄적용
+                        </button>
+                      </span>
+                    )}
+                    {col.type === "TEXT" && !readOnly && (
+                      <span className="flex items-center gap-1 print:hidden">
+                        <input
+                          type="text"
+                          value={bulkInputs[col.key] ?? ""}
+                          onChange={(e) => setBulkInputs((prev) => ({ ...prev, [col.key]: e.target.value }))}
+                          placeholder="값"
+                          className="w-full min-w-0 rounded border border-gray-300 px-1 py-0.5 text-[11px] font-normal text-gray-700"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => applyBulkValue(col.key)}
+                          className="shrink-0 rounded border border-gray-300 bg-white px-1.5 py-0.5 text-[11px] font-normal text-gray-600 hover:bg-gray-100"
+                        >
+                          일괄적용
+                        </button>
+                      </span>
+                    )}
                   </div>
                 </th>
               ))}
-              {!readOnly && <th className="px-2 py-2 print:hidden" />}
+              {!readOnly && <th className="border border-gray-300 px-2 py-2 print:hidden" />}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {rows.length === 0 && (
               <tr>
-                <td colSpan={5 + columns.length} className="px-2 py-6 text-center text-sm text-gray-400">
+                <td colSpan={5 + columns.length} className="border border-gray-300 px-2 py-6 text-center text-sm text-gray-400">
                   확정된 거래명세표 품목이 없습니다. 거래명세표를 먼저 확정해 주세요.
                 </td>
               </tr>
             )}
             {rows.map((row) => (
               <tr key={row.key}>
-                <td className="px-2 py-2 text-gray-900">{row.itemName}</td>
-                <td className="px-2 py-2 text-gray-600">{row.unit}</td>
-                <td className="px-2 py-2 text-gray-600">{row.quantity}</td>
-                <td className="px-2 py-2 text-gray-600">{row.vendorName}</td>
+                <td className="break-words border border-gray-300 px-2 py-2 text-gray-900 print:px-1 print:py-0.5" style={{ width: colWidths.name }}>
+                  {row.itemName}
+                </td>
+                <td className="border border-gray-300 px-2 py-2 text-gray-600 print:px-1 print:py-0.5" style={{ width: colWidths.unit }}>
+                  {row.unit}
+                </td>
+                <td className="border border-gray-300 px-2 py-2 text-gray-600 print:px-1 print:py-0.5" style={{ width: colWidths.qty }}>
+                  {row.quantity}
+                </td>
+                <td className="break-words border border-gray-300 px-2 py-2 text-gray-600 print:px-1 print:py-0.5" style={{ width: colWidths.vendor }}>
+                  {row.vendorName}
+                </td>
                 {columns.map((col) => {
                   const value = row.values[col.key] ?? "";
+                  const width = colWidths[col.key];
                   if (readOnly) {
                     return (
-                      <td key={col.key} className="px-2 py-2 text-gray-700">
+                      <td key={col.key} className="border border-gray-300 px-2 py-2 text-gray-700 print:px-1 print:py-0.5" style={{ width }}>
                         {value || "-"}
                       </td>
                     );
                   }
                   if (col.type === "CHECK") {
                     return (
-                      <td key={col.key} className="px-2 py-2">
+                      <td key={col.key} className="border border-gray-300 px-2 py-2 print:px-1 print:py-0.5" style={{ width }}>
                         <button
                           type="button"
                           onClick={() => setCellValue(row.key, col.key, nextCheckValue(value))}
-                          className={`h-8 w-10 rounded border text-sm font-semibold ${
+                          className={`h-8 w-10 rounded border text-sm font-semibold print:hidden ${
                             value === "O"
                               ? "border-primary-300 bg-primary-50 text-primary-700"
                               : value === "X"
@@ -276,28 +428,30 @@ export default function InspectionLogTable({
                         >
                           {value || "-"}
                         </button>
+                        <span className="hidden print:inline">{value || "-"}</span>
                       </td>
                     );
                   }
                   if (col.type === "DATE") {
                     return (
-                      <td key={col.key} className="px-2 py-2">
+                      <td key={col.key} className="border border-gray-300 px-2 py-2 print:px-1 print:py-0.5" style={{ width }}>
                         <input
                           type="date"
                           value={value}
                           onChange={(e) => setCellValue(row.key, col.key, e.target.value)}
-                          className="rounded border border-gray-300 px-2 py-1 text-sm"
+                          className="w-full min-w-0 rounded border border-gray-300 px-2 py-1 text-sm print:hidden"
                         />
+                        <span className="hidden print:inline">{value || "-"}</span>
                       </td>
                     );
                   }
                   if (col.type === "SELECT") {
                     return (
-                      <td key={col.key} className="px-2 py-2">
+                      <td key={col.key} className="border border-gray-300 px-2 py-2 print:px-1 print:py-0.5" style={{ width }}>
                         <select
                           value={value}
                           onChange={(e) => setCellValue(row.key, col.key, e.target.value)}
-                          className="rounded border border-gray-300 px-2 py-1 text-sm"
+                          className="w-full min-w-0 rounded border border-gray-300 px-2 py-1 text-sm print:hidden"
                         >
                           <option value="">선택</option>
                           {(col.options ?? []).map((opt) => (
@@ -306,21 +460,23 @@ export default function InspectionLogTable({
                             </option>
                           ))}
                         </select>
+                        <span className="hidden print:inline">{value || "-"}</span>
                       </td>
                     );
                   }
                   return (
-                    <td key={col.key} className="px-2 py-2">
+                    <td key={col.key} className="border border-gray-300 px-2 py-2 print:px-1 print:py-0.5" style={{ width }}>
                       <input
                         value={value}
                         onChange={(e) => setCellValue(row.key, col.key, e.target.value)}
-                        className="w-28 rounded border border-gray-300 px-2 py-1 text-sm"
+                        className="w-full min-w-0 rounded border border-gray-300 px-2 py-1 text-sm print:hidden"
                       />
+                      <span className="hidden print:inline">{value || "-"}</span>
                     </td>
                   );
                 })}
                 {!readOnly && (
-                  <td className="px-2 py-2 print:hidden">
+                  <td className="border border-gray-300 px-2 py-2 print:hidden">
                     <button
                       type="button"
                       onClick={() => removeRow(row.key)}

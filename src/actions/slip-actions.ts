@@ -151,8 +151,28 @@ export async function deleteSlip(slipId: string): Promise<ActionResult> {
   return { ok: true };
 }
 
-export async function copySlip(slipId: string): Promise<ActionResult & { newId?: string }> {
+export async function revertSlipToDraft(slipId: string): Promise<ActionResult> {
+  await requireSession();
+  await db.deliverySlip.update({
+    where: { id: slipId },
+    data: { status: "DRAFT", confirmedAt: null },
+  });
+  revalidatePath(`/slips/${slipId}`);
+  revalidatePath("/slips");
+  return { ok: true };
+}
+
+export async function copySlip(slipId: string, deliveryDate?: string): Promise<ActionResult & { newId?: string }> {
   const session = await requireSession();
+
+  let newDeliveryDate = new Date();
+  if (deliveryDate) {
+    const parsedDate = new Date(deliveryDate);
+    if (Number.isNaN(parsedDate.getTime())) {
+      return { ok: false, message: "납품일자를 올바르게 입력해 주세요." };
+    }
+    newDeliveryDate = parsedDate;
+  }
 
   try {
     const original = await db.deliverySlip.findUnique({
@@ -169,7 +189,7 @@ export async function copySlip(slipId: string): Promise<ActionResult & { newId?:
         restaurant: session.restaurant,
         vendorId: original.vendorId,
         taxType: original.taxType,
-        deliveryDate: new Date(),
+        deliveryDate: newDeliveryDate,
         status: "DRAFT",
         sourceType: "MANUAL",
         items: {

@@ -126,12 +126,12 @@ export function aggregateSummaryReport(rows: SummaryInputRow[]): SummaryReport {
   return { taxSections, taxableSupplyTotal, taxableTaxTotal, exemptSupplyTotal, grandTotal };
 }
 
-export async function buildSummaryReport(
+async function fetchSummaryInputRows(
   restaurant: RestaurantCode,
   startDate: Date,
   endDate: Date,
   options?: { vendorIds?: string[]; categories?: CategoryCode[] }
-): Promise<SummaryReport> {
+): Promise<SummaryInputRow[]> {
   const vendorFilter =
     options?.vendorIds && options.vendorIds.length > 0
       ? { vendorId: { in: options.vendorIds } }
@@ -150,7 +150,7 @@ export async function buildSummaryReport(
     include: { slip: { include: { vendor: true } } },
   });
 
-  const rows: SummaryInputRow[] = items
+  return items
     .filter((item): item is typeof item & { category: CategoryCode } => item.category !== null)
     .map((item) => ({
       category: item.category,
@@ -163,7 +163,77 @@ export async function buildSummaryReport(
       taxAmount: item.taxAmount,
       vendorName: item.slip.vendor?.name ?? "",
     }));
+}
 
+export async function buildSummaryReport(
+  restaurant: RestaurantCode,
+  startDate: Date,
+  endDate: Date,
+  options?: { vendorIds?: string[]; categories?: CategoryCode[] }
+): Promise<SummaryReport> {
+  const rows = await fetchSummaryInputRows(restaurant, startDate, endDate, options);
   return aggregateSummaryReport(rows);
+}
+
+export type VendorSummaryRow = {
+  vendorName: string;
+  category: CategoryCode;
+  taxType: TaxTypeCode;
+  supplyAmount: number;
+  taxAmount: number;
+};
+
+export type VendorSummaryReport = {
+  rows: VendorSummaryRow[];
+  taxableSupplyTotal: number;
+  taxableTaxTotal: number;
+  exemptSupplyTotal: number;
+  grandTotal: number;
+};
+
+/** 순수 집계 함수: 선택 업체 통합 요약 - 품목 상세 없이 업체 · 카테고리 · 과세구분별 합계만 계산 */
+export function aggregateVendorSummaryReport(rows: SummaryInputRow[]): VendorSummaryReport {
+  const grouped = new Map<string, VendorSummaryRow>();
+
+  for (const row of rows) {
+    const key = `${row.vendorName}__${row.category}__${row.taxType}`;
+    const entry =
+      grouped.get(key) ??
+      { vendorName: row.vendorName, category: row.category, taxType: row.taxType, supplyAmount: 0, taxAmount: 0 };
+    entry.supplyAmount += row.amount;
+    entry.taxAmount += row.taxAmount ?? 0;
+    grouped.set(key, entry);
+  }
+
+  const categoryOrder = new Map(CATEGORIES.map((c, i) => [c, i]));
+  const summaryRows = Array.from(grouped.values()).sort((a, b) => {
+    const categoryDiff = (categoryOrder.get(a.category) ?? 0) - (categoryOrder.get(b.category) ?? 0);
+    if (categoryDiff !== 0) return categoryDiff;
+    if (a.taxType !== b.taxType) return a.taxType === "TAXABLE" ? -1 : 1;
+    return a.vendorName.localeCompare(b.vendorName, "ko");
+  });
+
+  const taxableSupplyTotal = summaryRows
+    .filter((r) => r.taxType === "TAXABLE")
+    .reduce((sum, r) => sum + r.supplyAmount, 0);
+  const taxableTaxTotal = summaryRows
+    .filter((r) => r.taxType === "TAXABLE")
+    .reduce((sum, r) => sum + r.taxAmount, 0);
+  const exemptSupplyTotal = summaryRows
+    .filter((r) => r.taxType === "EXEMPT")
+    .reduce((sum, r) => sum + r.supplyAmount, 0);
+  const grandTotal = taxableSupplyTotal + taxableTaxTotal + exemptSupplyTotal;
+
+  return { rows: summaryRows, taxableSupplyTotal, taxableTaxTotal, exemptSupplyTotal, grandTotal };
+}
+
+export async function buildVendorSummaryReport(
+  restaurant: RestaurantCode,
+  startDate: Date,
+  endDate: Date,
+  options?: { vendorIds?: string[]; categories?: CategoryCode[] }
+): Promise<VendorSummaryReport> {
+  const rows = await fetchSummaryInputRows(restaurant, startDate, endDate, options);
+  return aggregateVendorSummaryReport(rows);
 }
 

@@ -67,3 +67,17 @@ export async function listActiveContractItems(vendorId: string, onDate: Date) {
   });
   return contract?.items ?? [];
 }
+
+/** 미등록 품목의 기본 카테고리 지정용: 업체의 활성 계약 카테고리 */
+export async function getActiveContractCategory(vendorId: string, onDate: Date) {
+  const contract = await db.contract.findFirst({
+    where: {
+      vendorId,
+      startDate: { lte: onDate },
+      endDate: { gte: onDate },
+    },
+    orderBy: { startDate: "desc" },
+    select: { category: true },
+  });
+  return contract?.category ?? null;
+}

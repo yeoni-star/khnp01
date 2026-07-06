@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { aggregateSummaryReport } from "./report-aggregate";
+import { aggregateSummaryReport, aggregateVendorSummaryReport } from "./report-aggregate";
 
 describe("aggregateSummaryReport", () => {
   const rows = [
@@ -117,5 +117,77 @@ describe("aggregateSummaryReport", () => {
     const rice = taxable.categories[0].items[0];
     expect(rice.priceVaries).toBe(true);
     expect(rice.unitPrice).toBe(Math.round(42000 / 20));
+  });
+});
+
+describe("aggregateVendorSummaryReport", () => {
+  const rows = [
+    {
+      category: "PROCESSED" as const,
+      itemName: "식용유",
+      unit: "말",
+      taxType: "TAXABLE" as const,
+      quantity: 2,
+      unitPrice: 46200,
+      amount: 92400,
+      taxAmount: 9240,
+      vendorName: "업체A",
+    },
+    {
+      category: "PROCESSED" as const,
+      itemName: "참기름",
+      unit: "ea",
+      taxType: "TAXABLE" as const,
+      quantity: 1,
+      unitPrice: 23100,
+      amount: 23100,
+      taxAmount: 2310,
+      vendorName: "업체A",
+    },
+    {
+      category: "MEAT" as const,
+      itemName: "돼지고기",
+      unit: "kg",
+      taxType: "TAXABLE" as const,
+      quantity: 5,
+      unitPrice: 12000,
+      amount: 60000,
+      taxAmount: 6000,
+      vendorName: "업체B",
+    },
+    {
+      category: "GRAIN" as const,
+      itemName: "쌀",
+      unit: "kg",
+      taxType: "EXEMPT" as const,
+      quantity: 20,
+      unitPrice: 2000,
+      amount: 40000,
+      taxAmount: null,
+      vendorName: "업체C",
+    },
+  ];
+
+  it("품목 상세 없이 업체 · 카테고리 · 과세구분별로 한 줄씩 합계를 만든다", () => {
+    const report = aggregateVendorSummaryReport(rows);
+    expect(report.rows).toHaveLength(3);
+    const vendorA = report.rows.find((r) => r.vendorName === "업체A")!;
+    expect(vendorA.supplyAmount).toBe(92400 + 23100);
+    expect(vendorA.taxAmount).toBe(9240 + 2310);
+    expect(vendorA.category).toBe("PROCESSED");
+    expect(vendorA.taxType).toBe("TAXABLE");
+  });
+
+  it("카테고리 고정 순서(양곡→김치류→농수산물→육류→공산품)로 정렬한다", () => {
+    const report = aggregateVendorSummaryReport(rows);
+    expect(report.rows.map((r) => r.category)).toEqual(["GRAIN", "MEAT", "PROCESSED"]);
+  });
+
+  it("과세/면세 합계 및 총합계를 올바르게 계산한다", () => {
+    const report = aggregateVendorSummaryReport(rows);
+    expect(report.taxableSupplyTotal).toBe(92400 + 23100 + 60000);
+    expect(report.taxableTaxTotal).toBe(9240 + 2310 + 6000);
+    expect(report.exemptSupplyTotal).toBe(40000);
+    expect(report.grandTotal).toBe(report.taxableSupplyTotal + report.taxableTaxTotal + report.exemptSupplyTotal);
   });
 });

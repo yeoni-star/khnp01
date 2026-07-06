@@ -4,6 +4,7 @@ import { getSession } from "@/lib/session";
 import InspectionNoticeModal from "@/components/inspection/InspectionNoticeModal";
 import MonthCalendar from "@/components/common/MonthCalendar";
 import { getMonthRange, parseMonthParam } from "@/lib/month-range";
+import NewInspectionForm from "@/components/inspection/NewInspectionForm";
 
 export default async function InspectionPage({
   searchParams,
@@ -22,9 +23,13 @@ export default async function InspectionPage({
     orderBy: { logDate: "desc" },
     include: { _count: { select: { rows: true } } },
   });
-  const confirmedDates = logs
-    .filter((l) => l.status === "CONFIRMED")
-    .map((l) => l.logDate.toISOString().slice(0, 10));
+  
+  // 임시저장/확정을 한 번도 누르지 않은(명시적 저장이 없는) 로그는 숨김
+  const visibleLogs = logs.filter(
+    (l) => l.status === "CONFIRMED" || l.updatedAt.getTime() - l.createdAt.getTime() > 1000
+  );
+
+  const markedDates = visibleLogs.map((l) => l.logDate.toISOString().slice(0, 10));
 
   return (
     <div className="space-y-6">
@@ -35,20 +40,22 @@ export default async function InspectionPage({
           <h1 className="text-lg font-semibold text-gray-900">식재료 검수일지</h1>
           <p className="mt-1 text-sm text-gray-600">입고일자를 선택해 검수일지를 작성하거나 확인합니다.</p>
         </div>
-        <Link
-          href="/inspection/template"
-          className="rounded border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
-        >
-          양식 설정
-        </Link>
+        <div className="flex gap-2">
+          <NewInspectionForm />
+          <Link
+            href="/inspection/template"
+            className="rounded border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 flex items-center"
+          >
+            양식 설정
+          </Link>
+        </div>
       </div>
 
       <MonthCalendar
         basePath="/inspection"
         month={month}
-        markedDates={confirmedDates}
-        legendLabel="확정된 검수일지가 있는 날짜"
-        dayBasePath="/inspection"
+        markedDates={markedDates}
+        legendLabel="작성된 검수일지가 있는 날짜"
       />
 
       <div className="overflow-hidden rounded-md border border-gray-200 bg-white">
@@ -63,7 +70,7 @@ export default async function InspectionPage({
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {logs.map((log) => (
+            {visibleLogs.map((log) => (
               <tr key={log.id}>
                 <td className="px-4 py-2 text-gray-600">{log.logDate.toISOString().slice(0, 10)}</td>
                 <td className="px-4 py-2 text-gray-600">{log.inspectorName ?? "-"}</td>
@@ -87,7 +94,7 @@ export default async function InspectionPage({
                 </td>
               </tr>
             ))}
-            {logs.length === 0 && (
+            {visibleLogs.length === 0 && (
               <tr>
                 <td colSpan={5} className="px-4 py-6 text-center text-gray-400">
                   이번 달에 작성된 검수일지가 없습니다.

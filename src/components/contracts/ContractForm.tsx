@@ -185,6 +185,20 @@ export default function ContractForm({
       .map((row) => ({ ...row, unitPrice: Number(row.unitPrice) || 0 }))
   );
 
+  const duplicateNames = new Set<string>();
+  const seenNames = new Set<string>();
+  for (const row of items) {
+    const name = row.itemName.trim();
+    if (name) {
+      if (seenNames.has(name)) {
+        duplicateNames.add(name);
+      } else {
+        seenNames.add(name);
+      }
+    }
+  }
+  const hasDuplicates = duplicateNames.size > 0;
+
   return (
     <div className={`flex gap-6 items-start ${previewUrl ? 'flex-col lg:flex-row' : 'flex-col'}`}>
       {previewUrl && (
@@ -358,6 +372,11 @@ export default function ContractForm({
             {ocrMessage.text}
           </p>
         )}
+        {hasDuplicates && (
+          <p className="mb-3 text-xs font-bold text-red-600">
+            ⚠️ 중복된 품명이 있습니다. 빨간색 테두리로 표시된 항목을 확인해 주세요.
+          </p>
+        )}
         <table className="w-full text-sm">
           <thead className="text-left text-xs font-medium text-gray-500">
             <tr>
@@ -368,41 +387,52 @@ export default function ContractForm({
             </tr>
           </thead>
           <tbody>
-            {items.map((row, index) => (
-              <tr key={index}>
-                <td className="px-2 py-1">
-                  <input
-                    value={row.itemName}
-                    onChange={(e) => updateItem(index, { itemName: e.target.value })}
-                    className="w-full rounded border border-gray-300 px-2 py-1 text-sm"
-                  />
-                </td>
-                <td className="px-2 py-1">
-                  <input
-                    value={row.unit}
-                    onChange={(e) => updateItem(index, { unit: e.target.value })}
-                    className="w-20 rounded border border-gray-300 px-2 py-1 text-sm"
-                  />
-                </td>
-                <td className="px-2 py-1">
-                  <input
-                    type="number"
-                    value={row.unitPrice}
-                    onChange={(e) => updateItem(index, { unitPrice: e.target.value })}
-                    className="w-28 rounded border border-gray-300 px-2 py-1 text-sm"
-                  />
-                </td>
-                <td className="px-2 py-1">
-                  <button
-                    type="button"
-                    onClick={() => removeRow(index)}
-                    className="text-xs text-red-500 hover:underline"
-                  >
-                    삭제
-                  </button>
-                </td>
-              </tr>
-            ))}
+            {items.map((row, index) => {
+              const name = row.itemName.trim();
+              const isDuplicate = name !== "" && duplicateNames.has(name);
+              return (
+                <tr key={index} className="align-top">
+                  <td className="px-2 py-1">
+                    <input
+                      value={row.itemName}
+                      onChange={(e) => updateItem(index, { itemName: e.target.value })}
+                      className={`w-full rounded border px-2 py-1 text-sm ${
+                        isDuplicate ? "border-red-400 bg-red-50" : "border-gray-300"
+                      }`}
+                    />
+                    {isDuplicate && <p className="mt-1 text-xs font-bold text-red-600">중복 품목</p>}
+                  </td>
+                  <td className="px-2 py-1">
+                    <input
+                      value={row.unit}
+                      onChange={(e) => updateItem(index, { unit: e.target.value })}
+                      className={`w-20 rounded border px-2 py-1 text-sm ${
+                        isDuplicate ? "border-red-400 bg-red-50" : "border-gray-300"
+                      }`}
+                    />
+                  </td>
+                  <td className="px-2 py-1">
+                    <input
+                      type="number"
+                      value={row.unitPrice}
+                      onChange={(e) => updateItem(index, { unitPrice: e.target.value })}
+                      className={`w-28 rounded border px-2 py-1 text-sm ${
+                        isDuplicate ? "border-red-400 bg-red-50" : "border-gray-300"
+                      }`}
+                    />
+                  </td>
+                  <td className="px-2 py-1">
+                    <button
+                      type="button"
+                      onClick={() => removeRow(index)}
+                      className="text-xs text-red-500 hover:underline mt-1"
+                    >
+                      삭제
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

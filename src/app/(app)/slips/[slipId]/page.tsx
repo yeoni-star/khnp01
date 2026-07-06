@@ -1,10 +1,11 @@
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
-import { listActiveContractItems } from "@/lib/pricing";
+import { listActiveContractItems, getActiveContractCategory } from "@/lib/pricing";
 import { RESTAURANT_LABELS } from "@/lib/restaurants";
 import { TAX_TYPE_LABELS } from "@/lib/tax";
 import SlipItemsTable from "@/components/slips/SlipItemsTable";
 import DeleteSlipButton from "@/components/slips/DeleteSlipButton";
+import RevertSlipButton from "@/components/slips/RevertSlipButton";
 
 export default async function SlipDetailPage({
   params,
@@ -18,10 +19,16 @@ export default async function SlipDetailPage({
   });
   if (!slip) notFound();
 
-  const activeContractItems = await listActiveContractItems(slip.vendorId, slip.deliveryDate);
+  const [activeContractItems, defaultCategory] = await Promise.all([
+    listActiveContractItems(slip.vendorId, slip.deliveryDate),
+    getActiveContractCategory(slip.vendorId, slip.deliveryDate),
+  ]);
 
   const unmatchedItems = await db.deliverySlipItem.findMany({
-    where: { matchType: "NONE" },
+    where: {
+      matchType: "NONE",
+      slip: { vendorId: slip.vendorId },
+    },
     select: { itemName: true, unit: true, unitPrice: true },
     distinct: ["itemName", "unit", "unitPrice"],
   });
@@ -38,13 +45,17 @@ export default async function SlipDetailPage({
             {slip.status === "CONFIRMED" ? "확정됨" : "임시저장"}
           </p>
         </div>
-        <DeleteSlipButton slipId={slip.id} />
+        <div className="flex items-center gap-3">
+          {slip.status === "CONFIRMED" && <RevertSlipButton slipId={slip.id} />}
+          <DeleteSlipButton slipId={slip.id} />
+        </div>
       </div>
 
       <SlipItemsTable
         slipId={slip.id}
         status={slip.status}
         taxType={slip.taxType}
+        defaultCategory={defaultCategory}
         contractItems={activeContractItems.map((i) => ({
           id: i.id,
           itemName: i.itemName,

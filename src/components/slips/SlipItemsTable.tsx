@@ -121,12 +121,14 @@ export default function SlipItemsTable({
   contractItems,
   unmatchedItems = [],
   initialItems,
+  defaultCategory = null,
 }: {
   slipId: string;
   status: "DRAFT" | "CONFIRMED";
   taxType: TaxTypeCode;
   contractItems: ContractItemOption[];
   unmatchedItems?: UnmatchedItemOption[];
+  defaultCategory?: CategoryCode | null;
   initialItems: {
     itemName: string;
     category: CategoryCode | null;
@@ -207,7 +209,12 @@ export default function SlipItemsTable({
     let targetKey = activeRowKey;
     let targetRow = rows.find((r) => r.key === targetKey);
 
-    if (!targetKey || !targetRow || targetRow.itemName.trim() !== "") {
+    let shouldOverwrite = false;
+    if (targetRow) {
+      shouldOverwrite = true;
+    }
+
+    if (!targetKey || !targetRow || !shouldOverwrite) {
       const newRowObj = emptyRow();
       setRows((prev) => [...prev, newRowObj]);
       targetKey = newRowObj.key;
@@ -311,6 +318,7 @@ export default function SlipItemsTable({
         const amount = (Number(r.quantity) || 0) * item.unitPrice;
         return {
           ...r,
+          itemName: item.itemName,
           category: item.category,
           unit: item.unit,
           unitPrice: String(item.unitPrice),
@@ -373,7 +381,7 @@ export default function SlipItemsTable({
           const isPriceDiff = matched ? String(matched.unitPrice) !== r.unitPrice : false;
           return {
             itemName: r.itemName.trim(),
-            category: r.category || null,
+            category: r.category || defaultCategory || null,
             unit: r.unit.trim(),
             quantity: Number(r.quantity) || 0,
             unitPrice: Number(r.unitPrice) || 0,
@@ -439,11 +447,16 @@ export default function SlipItemsTable({
       return pool.slice(0, 30);
     }
     const q = searchQuery.toLowerCase();
-    return pool.filter((item) => item.name.toLowerCase().includes(q)).slice(0, 30);
+    const qNumber = q.replace(/,/g, "");
+    return pool.filter((item) => {
+      const nameMatch = item.name.toLowerCase().includes(q);
+      const priceMatch = String(item.price).includes(qNumber);
+      return nameMatch || priceMatch;
+    }).slice(0, 30);
   }, [searchPool, searchQuery, itemTypeFilter]);
 
   return (
-    <div className="grid grid-cols-4 gap-4">
+    <div className="grid grid-cols-5 gap-4">
       {/* 왼쪽 메인 입력 폼 영역 */}
       <div className="col-span-3 space-y-4">
         {!readOnly && (
@@ -507,8 +520,8 @@ export default function SlipItemsTable({
                 <th className="px-2 py-2">단위</th>
                 <th className="px-2 py-2">수량</th>
                 <th className="px-2 py-2">단가</th>
-                <th className="px-2 py-2">금액</th>
                 {taxType === "TAXABLE" && <th className="px-2 py-2">세액</th>}
+                <th className="px-2 py-2">금액</th>
                 <th className="px-2 py-2" />
               </tr>
             </thead>
@@ -527,9 +540,20 @@ export default function SlipItemsTable({
                       <input
                         value={row.itemName}
                         disabled={readOnly}
-                        onChange={(e) => updateRow(row.key, { itemName: e.target.value })}
+                        onChange={(e) => {
+                          updateRow(row.key, { itemName: e.target.value });
+                          setActiveRowKey(row.key);
+                          setItemTypeFilter("CONTRACT");
+                          setSearchQuery(e.target.value);
+                        }}
                         onBlur={(e) => handleItemNameBlur(row.key, e.target.value)}
-                        onFocus={() => setActiveRowKey(row.key)}
+                        onFocus={() => {
+                          setActiveRowKey(row.key);
+                          if (row.itemName.trim()) {
+                            setItemTypeFilter("CONTRACT");
+                            setSearchQuery(row.itemName);
+                          }
+                        }}
                         className={`w-40 rounded border px-2 py-1 text-sm disabled:bg-gray-100 ${
                           activeRowKey === row.key ? "border-primary-500 ring-1 ring-primary-500" : "border-gray-300"
                         }`}
@@ -570,7 +594,7 @@ export default function SlipItemsTable({
                         value={row.unit}
                         disabled={readOnly}
                         onChange={(e) => updateRow(row.key, { unit: e.target.value })}
-                        className={`w-16 rounded border px-2 py-1 text-sm disabled:bg-gray-100 ${
+                        className={`w-14 rounded border px-2 py-1 text-sm disabled:bg-gray-100 ${
                           isUnitDiff ? "border-red-400 bg-red-50" : "border-gray-300"
                         }`}
                       />
@@ -582,7 +606,7 @@ export default function SlipItemsTable({
                         value={row.quantity}
                         disabled={readOnly}
                         onChange={(e) => handleQuantityChange(row.key, e.target.value)}
-                        className="w-20 rounded border border-gray-300 px-2 py-1 text-sm disabled:bg-gray-100"
+                        className="w-16 rounded border border-gray-300 px-2 py-1 text-sm disabled:bg-gray-100"
                       />
                     </td>
                     <td className="px-2 py-2">
@@ -591,13 +615,12 @@ export default function SlipItemsTable({
                         value={row.unitPrice}
                         disabled={readOnly}
                         onChange={(e) => handlePriceChange(row.key, e.target.value)}
-                        className={`w-24 rounded border px-2 py-1 text-sm disabled:bg-gray-100 ${
+                        className={`w-20 rounded border px-2 py-1 text-sm disabled:bg-gray-100 ${
                           isPriceDiff ? "border-red-400 bg-red-50" : "border-gray-300"
                         }`}
                       />
                       {isPriceDiff && <p className="mt-1 text-xs text-red-600">계약단가와 다름</p>}
                     </td>
-                    <td className="px-2 py-2 text-gray-700">{amount.toLocaleString()}</td>
                     {taxType === "TAXABLE" && (
                       <td className="px-2 py-2">
                         <input
@@ -605,13 +628,16 @@ export default function SlipItemsTable({
                           value={row.taxAmount}
                           disabled={readOnly}
                           onChange={(e) => handleTaxAmountChange(row.key, e.target.value)}
-                          className={`w-24 rounded border px-2 py-1 text-sm disabled:bg-gray-100 ${
+                          className={`w-20 rounded border px-2 py-1 text-sm disabled:bg-gray-100 ${
                             isTaxDiff ? "border-red-400 bg-red-50" : "border-gray-300"
                           }`}
                         />
                         {isTaxDiff && <p className="mt-1 text-xs text-red-600">확인필요</p>}
                       </td>
                     )}
+                    <td className="px-2 py-2 text-gray-700">
+                      {(amount + (taxType === "TAXABLE" ? Number(row.taxAmount) || 0 : 0)).toLocaleString()}
+                    </td>
                     <td className="px-2 py-2">
                       {!readOnly && (
                         <button
@@ -749,14 +775,14 @@ export default function SlipItemsTable({
       </div>
 
       {/* 오른쪽 검색 도우미 패널 영역 */}
-      <div className="col-span-1">
+      <div className="col-span-2">
         <div className="sticky top-6 rounded-md border border-gray-200 bg-white p-4 shadow-sm h-[calc(100vh-8rem)] max-h-[600px] flex flex-col">
           <div className="border-b pb-2 mb-3">
             <h3 className="text-sm font-bold text-gray-800">🔍 품목 검색 도우미</h3>
             <p className="text-[11px] text-gray-500 mt-1">
               {readOnly
                 ? "확정된 명세표는 수정 불가합니다. (단가 및 규격 조회용)"
-                : "입력하려는 품명 칸을 먼저 마우스로 클릭(포커싱)한 뒤, 아래 검색 결과에서 품목을 클릭하면 자동 입력됩니다."}
+                : "품명 칸에 입력하면 자동으로 검색되고, 아래 결과를 클릭하면 해당 칸에 입력됩니다."}
             </p>
           </div>
 
@@ -824,9 +850,9 @@ export default function SlipItemsTable({
                   </span>
                   <span className="text-xs font-bold text-gray-800 line-clamp-1">{item.name}</span>
                 </div>
-                <div className="text-[10px] text-gray-500 flex justify-between">
+                <div className="text-[11px] text-gray-500 flex justify-between items-center">
                   <span>규격: {item.unit || "-"}</span>
-                  <span className="font-semibold text-gray-700">₩{item.price.toLocaleString()}</span>
+                  <span className="font-bold text-gray-900 text-[14px]">₩{item.price.toLocaleString()}</span>
                 </div>
               </button>
             ))}

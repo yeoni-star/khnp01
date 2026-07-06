@@ -50,8 +50,15 @@ export function findSimilarItem<T extends { itemName: string }>(
 
   let best: { item: T; score: number } | null = null;
   for (const candidate of candidates) {
-    if (candidate.itemName.trim().toLowerCase() === normalized) continue;
-    const score = diceCoefficient(normalized, candidate.itemName);
+    const candidateName = candidate.itemName.trim().toLowerCase();
+    if (candidateName === normalized) continue;
+    
+    let score = diceCoefficient(normalized, candidate.itemName);
+    
+    if (candidateName.includes(normalized) || normalized.includes(candidateName)) {
+      score = Math.max(score, 0.8);
+    }
+
     if (score >= threshold && (!best || score > best.score)) {
       best = { item: candidate, score };
     }

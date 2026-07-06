@@ -21,7 +21,10 @@ export default async function SlipsPage({
     orderBy: { deliveryDate: "desc" },
     include: { vendor: true, items: true },
   });
-  const markedDates = [...new Set(slips.map((s) => s.deliveryDate.toISOString().slice(0, 10)))];
+
+  // 새 거래명세표 버튼만 누르고 저장을 안 한(품목이 없는 임시저장) 내역은 숨김
+  const visibleSlips = slips.filter((s) => s.status === "CONFIRMED" || s.items.length > 0);
+  const markedDates = [...new Set(visibleSlips.map((s) => s.deliveryDate.toISOString().slice(0, 10)))];
 
   return (
     <div className="space-y-6">
@@ -59,7 +62,7 @@ export default async function SlipsPage({
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {slips.map((s) => {
+            {visibleSlips.map((s) => {
               const total = s.items.reduce((sum, i) => sum + i.amount, 0);
               return (
                 <tr key={s.id}>
@@ -88,7 +91,7 @@ export default async function SlipsPage({
                 </tr>
               );
             })}
-            {slips.length === 0 && (
+            {visibleSlips.length === 0 && (
               <tr>
                 <td colSpan={7} className="px-4 py-6 text-center text-gray-400">
                   이번 달에 등록된 거래명세표가 없습니다.

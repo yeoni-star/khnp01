@@ -1,5 +1,5 @@
 import { getSession } from "@/lib/session";
-import { buildSummaryReport } from "@/lib/report-aggregate";
+import { buildVendorSummaryReport } from "@/lib/report-aggregate";
 import { formatReportPeriod } from "@/lib/vendor-report";
 import { parseDateRange, parseCategories } from "@/lib/report-period";
 import { RESTAURANT_LABELS } from "@/lib/restaurants";
@@ -24,12 +24,10 @@ export default async function SummaryReportPage({
       : [rawVendorIds]
     : undefined;
 
-  const report = await buildSummaryReport(session!.restaurant, startDate, endDate, {
+  const report = await buildVendorSummaryReport(session!.restaurant, startDate, endDate, {
     vendorIds: vendorIds && vendorIds.length > 0 ? vendorIds : undefined,
     categories,
   });
-
-  const selectedCount = vendorIds?.length ?? 0;
 
   return (
     <SummaryReportTable
@@ -39,7 +37,6 @@ export default async function SummaryReportPage({
       endStr={endStr}
       categoriesParam={categoriesParam}
       report={report}
-      selectedVendorCount={selectedCount}
     />
   );
 }
