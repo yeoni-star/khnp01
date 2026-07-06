@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
     const sheet = workbook.addWorksheet("견적단가표");
     sheet.views = [{ showGridLines: true }];
 
-    const colsCount = taxType === "TAXABLE" ? 7 : 5;
+    const colsCount = taxType === "TAXABLE" ? 7 : 6;
 
     // 2.1 대제목 (카테고리 선택 시 카테고리명 접두)
     const categoryLabel = category && isCategoryCode(category) ? CATEGORY_LABELS[category] : "";
@@ -127,8 +127,8 @@ export async function GET(request: NextRequest) {
 
     // 2.4 데이터 테이블 시작 (7행 헤더, 8행 데이터 시작)
     const headers = taxType === "TAXABLE"
-      ? ["번호", "품명", "규격", "소요수량", "공급가액", "세액", "합계금액"]
-      : ["번호", "품명", "규격", "소요수량", "공급가액(합계)"];
+      ? ["번호", "품명", "단위", "소요수량", "공급가액", "합계금액", "세액"]
+      : ["번호", "품명", "단위", "소요수량", "단가(공급가액)", "합계"];
 
     const headerRow = 7;
     headers.forEach((label, i) => {
@@ -157,7 +157,7 @@ export async function GET(request: NextRequest) {
       sheet.getCell(r, 2).value = row.itemName;
       sheet.getCell(r, 2).alignment = { horizontal: "left", vertical: "middle" };
 
-      // 3. 규격
+      // 3. 규격 -> 단위
       sheet.getCell(r, 3).value = row.unit || "-";
       sheet.getCell(r, 3).alignment = { horizontal: "center", vertical: "middle" };
 
@@ -172,17 +172,23 @@ export async function GET(request: NextRequest) {
       sheet.getCell(r, 5).numFmt = "#,##0";
 
       if (taxType === "TAXABLE") {
-        // 6. 세액 (공급가액이 있을 때만 자동계산, 빈값이면 빈칸)
-        sheet.getCell(r, 6).value = { formula: `IF(E${r}="","",ROUND(E${r}*0.1,0))` };
+        // 6. 합계금액 (소요수량 x 공급가액(단가))
+        sheet.getCell(r, 6).value = { formula: `IF(E${r}="","",D${r}*E${r})` };
         sheet.getCell(r, 6).alignment = { horizontal: "right", vertical: "middle" };
         sheet.getCell(r, 6).numFmt = "#,##0";
         sheet.getCell(r, 6).fill = BOX_FILL;
 
-        // 7. 합계금액 (공급가액이 있을 때만 자동계산, 빈값이면 빈칸)
-        sheet.getCell(r, 7).value = { formula: `IF(E${r}="","",E${r}+F${r})` };
+        // 7. 세액 (합계금액의 10%)
+        sheet.getCell(r, 7).value = { formula: `IF(F${r}="","",ROUND(F${r}*0.1,0))` };
         sheet.getCell(r, 7).alignment = { horizontal: "right", vertical: "middle" };
         sheet.getCell(r, 7).numFmt = "#,##0";
         sheet.getCell(r, 7).fill = BOX_FILL;
+      } else {
+        // 6. 합계 (단가 x 소요수량)
+        sheet.getCell(r, 6).value = { formula: `IF(E${r}="","",D${r}*E${r})` };
+        sheet.getCell(r, 6).alignment = { horizontal: "right", vertical: "middle" };
+        sheet.getCell(r, 6).numFmt = "#,##0";
+        sheet.getCell(r, 6).fill = BOX_FILL;
       }
 
       // 테두리 설정
@@ -210,27 +216,27 @@ export async function GET(request: NextRequest) {
       sheet.getCell(summaryRow, 4).numFmt = "#,##0.##";
       sheet.getCell(summaryRow, 4).fill = HEADER_FILL;
 
-      // 공급가액 합계 (E열)
-      sheet.getCell(summaryRow, 5).value = { formula: `SUM(E${dataStartRow}:E${summaryRow - 1})` };
-      sheet.getCell(summaryRow, 5).alignment = { horizontal: "right", vertical: "middle" };
-      sheet.getCell(summaryRow, 5).font = { bold: true };
-      sheet.getCell(summaryRow, 5).numFmt = "#,##0";
-      sheet.getCell(summaryRow, 5).fill = HEADER_FILL;
-
       if (taxType === "TAXABLE") {
-        // 세액 합계 (F열)
+        // 합계금액 합계 (F열)
         sheet.getCell(summaryRow, 6).value = { formula: `SUM(F${dataStartRow}:F${summaryRow - 1})` };
         sheet.getCell(summaryRow, 6).alignment = { horizontal: "right", vertical: "middle" };
         sheet.getCell(summaryRow, 6).font = { bold: true };
         sheet.getCell(summaryRow, 6).numFmt = "#,##0";
         sheet.getCell(summaryRow, 6).fill = HEADER_FILL;
 
-        // 총액 합계 (G열)
+        // 세액 합계 (G열)
         sheet.getCell(summaryRow, 7).value = { formula: `SUM(G${dataStartRow}:G${summaryRow - 1})` };
         sheet.getCell(summaryRow, 7).alignment = { horizontal: "right", vertical: "middle" };
         sheet.getCell(summaryRow, 7).font = { bold: true };
         sheet.getCell(summaryRow, 7).numFmt = "#,##0";
         sheet.getCell(summaryRow, 7).fill = HEADER_FILL;
+      } else {
+        // 단가(E열)는 합산하지 않고, 합계(F열)만 합산
+        sheet.getCell(summaryRow, 6).value = { formula: `SUM(F${dataStartRow}:F${summaryRow - 1})` };
+        sheet.getCell(summaryRow, 6).alignment = { horizontal: "right", vertical: "middle" };
+        sheet.getCell(summaryRow, 6).font = { bold: true };
+        sheet.getCell(summaryRow, 6).numFmt = "#,##0";
+        sheet.getCell(summaryRow, 6).fill = HEADER_FILL;
       }
 
       for (let c = 1; c <= colsCount; c++) {
@@ -244,10 +250,12 @@ export async function GET(request: NextRequest) {
     sheet.getColumn(2).width = 32;  // 품명/업체입력칸
     sheet.getColumn(3).width = 14;  // 규격/직인라벨
     sheet.getColumn(4).width = 14;  // 소요수량/직인박스
-    sheet.getColumn(5).width = 18;  // 공급가액
+    sheet.getColumn(5).width = 18;  // 공급가액 / 단가(공급가액)
     if (taxType === "TAXABLE") {
-      sheet.getColumn(6).width = 16;  // 세액
-      sheet.getColumn(7).width = 20;  // 합계금액
+      sheet.getColumn(6).width = 20;  // 합계금액
+      sheet.getColumn(7).width = 16;  // 세액
+    } else {
+      sheet.getColumn(6).width = 20;  // 합계
     }
 
     // 3. 파일 생성 및 전송
