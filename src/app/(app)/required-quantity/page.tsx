@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import ExportCsvButton from "../unmatched-items/ExportCsvButton";
+import QuickRangeButtons from "./QuickRangeButtons";
 import { getSession } from "@/lib/session";
 import { buildQuantityReport } from "@/lib/quantity-aggregate";
 import { CATEGORIES, CATEGORY_LABELS, type CategoryCode } from "@/lib/categories";
@@ -77,6 +78,7 @@ export default async function RequiredQuantityPage({
         method="get"
         className="grid grid-cols-2 gap-3 rounded-md border border-gray-200 bg-white p-4 sm:grid-cols-6"
       >
+        <QuickRangeButtons />
         <div>
           <label className="mb-1 block text-xs font-medium text-gray-600">시작일</label>
           <input
