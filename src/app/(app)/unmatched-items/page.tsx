@@ -13,6 +13,7 @@ export default async function UnmatchedItemsPage(props: {
     restaurant?: string;
     category?: string;
     vendorId?: string;
+    includeExpired?: string;
   }>;
 }) {
   const session = await getSession();
@@ -30,6 +31,7 @@ export default async function UnmatchedItemsPage(props: {
     ? (searchParams.category as CategoryCode)
     : undefined;
   const vendorIdFilter = searchParams.vendorId || undefined;
+  const includeExpired = searchParams.includeExpired === "1";
 
   const dateFilter: { gte?: Date; lte?: Date } = {};
   if (searchParams.startDate) {
@@ -39,7 +41,7 @@ export default async function UnmatchedItemsPage(props: {
     dateFilter.lte = new Date(searchParams.endDate);
   }
 
-  const items = await db.deliverySlipItem.findMany({
+  const allItems = await db.deliverySlipItem.findMany({
     where: {
       matchType: "NONE",
       slip: {
@@ -51,13 +53,20 @@ export default async function UnmatchedItemsPage(props: {
     orderBy: { createdAt: "desc" },
   });
 
-  // Fetch all active contracts to map vendor + date to category
-  const vendorIds = Array.from(new Set(items.map((i) => i.slip.vendorId)));
+  // Fetch all contracts to map vendor + date to category, and to determine which vendors are currently active
+  const vendorIds = Array.from(new Set(allItems.map((i) => i.slip.vendorId)));
   const contracts = await db.contract.findMany({
     where: { vendorId: { in: vendorIds } },
   });
 
-  // 업체 드롭다운 옵션: 식당/기간 필터만 적용된 시점의 전체 업체 목록
+  // 기본적으로는 계약이 만료되지 않은(현재 진행중인) 업체의 미등록 품목만 보여준다.
+  const now = new Date();
+  const activeVendorIds = new Set(
+    contracts.filter((c) => c.startDate <= now && c.endDate >= now).map((c) => c.vendorId)
+  );
+  const items = includeExpired ? allItems : allItems.filter((i) => activeVendorIds.has(i.slip.vendorId));
+
+  // 업체 드롭다운 옵션: 식당/기간/만료포함 필터가 적용된 시점의 업체 목록
   const vendorOptions = Array.from(new Map(items.map((i) => [i.slip.vendorId, i.slip.vendor.name])).entries())
     .map(([id, name]) => ({ id, name }))
     .sort((a, b) => a.name.localeCompare(b.name, "ko"));

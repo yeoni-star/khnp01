@@ -13,6 +13,7 @@ export default function DateFilter({ vendors }: { vendors: { id: string; name: s
   const [restaurant, setRestaurant] = useState(searchParams.get("restaurant") || "all");
   const [category, setCategory] = useState(searchParams.get("category") || "all");
   const [vendorId, setVendorId] = useState(searchParams.get("vendorId") || "all");
+  const [includeExpired, setIncludeExpired] = useState(searchParams.get("includeExpired") === "1");
 
   const applyParam = (key: string, value: string) => {
     const params = new URLSearchParams(searchParams);
@@ -51,17 +52,23 @@ export default function DateFilter({ vendors }: { vendors: { id: string; name: s
     applyParam("vendorId", value);
   };
 
+  const handleIncludeExpiredChange = (checked: boolean) => {
+    setIncludeExpired(checked);
+    applyParam("includeExpired", checked ? "1" : "");
+  };
+
   const handleReset = () => {
     setStartDate("");
     setEndDate("");
     setRestaurant("all");
     setCategory("all");
     setVendorId("all");
+    setIncludeExpired(false);
     router.push("?");
   };
 
   const hasActiveFilter =
-    startDate || endDate || restaurant !== "all" || category !== "all" || vendorId !== "all";
+    startDate || endDate || restaurant !== "all" || category !== "all" || vendorId !== "all" || includeExpired;
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -117,6 +124,15 @@ export default function DateFilter({ vendors }: { vendors: { id: string; name: s
       >
         조회
       </button>
+      <label className="flex items-center gap-1.5 text-xs font-medium text-gray-600 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={includeExpired}
+          onChange={(e) => handleIncludeExpiredChange(e.target.checked)}
+          className="h-3.5 w-3.5 cursor-pointer accent-primary-600"
+        />
+        만료된 계약 포함
+      </label>
       {hasActiveFilter && (
         <button
           onClick={handleReset}
