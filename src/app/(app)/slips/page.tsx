@@ -27,6 +27,11 @@ export default async function SlipsPage({
   // 새 거래명세표 버튼만 누르고 저장을 안 한(품목이 없는 임시저장) 내역은 숨김
   const visibleMonthSlips = monthSlips.filter((s) => s.status === "CONFIRMED" || s.items.length > 0);
   const markedDates = [...new Set(visibleMonthSlips.map((s) => s.deliveryDate.toISOString().slice(0, 10)))];
+  const draftDates = [
+    ...new Set(
+      visibleMonthSlips.filter((s) => s.status === "DRAFT").map((s) => s.deliveryDate.toISOString().slice(0, 10))
+    ),
+  ];
   const visibleSlips = selectedDate
     ? visibleMonthSlips.filter((s) => s.deliveryDate.toISOString().slice(0, 10) === selectedDate)
     : visibleMonthSlips;
@@ -51,6 +56,8 @@ export default async function SlipsPage({
         month={month}
         markedDates={markedDates}
         legendLabel="거래명세표가 있는 날짜"
+        draftDates={draftDates}
+        draftLegendLabel="임시저장된 거래명세표가 있는 날짜"
         selectedDate={selectedDate ?? undefined}
       />
 

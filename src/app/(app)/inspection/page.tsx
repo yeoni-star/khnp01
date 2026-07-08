@@ -32,6 +32,11 @@ export default async function InspectionPage({
   );
 
   const markedDates = visibleMonthLogs.map((l) => l.logDate.toISOString().slice(0, 10));
+  const draftDates = [
+    ...new Set(
+      visibleMonthLogs.filter((l) => l.status === "DRAFT").map((l) => l.logDate.toISOString().slice(0, 10))
+    ),
+  ];
   const visibleLogs = selectedDate
     ? visibleMonthLogs.filter((l) => l.logDate.toISOString().slice(0, 10) === selectedDate)
     : visibleMonthLogs;
@@ -61,6 +66,8 @@ export default async function InspectionPage({
         month={month}
         markedDates={markedDates}
         legendLabel="작성된 검수일지가 있는 날짜"
+        draftDates={draftDates}
+        draftLegendLabel="임시저장된 검수일지가 있는 날짜"
         selectedDate={selectedDate ?? undefined}
       />
 

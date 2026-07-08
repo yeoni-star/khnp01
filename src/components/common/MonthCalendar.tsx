@@ -40,12 +40,17 @@ export default function MonthCalendar({
   month,
   markedDates,
   legendLabel,
+  draftDates,
+  draftLegendLabel,
   selectedDate,
 }: {
   basePath: string;
   month: string;
   markedDates: string[];
   legendLabel: string;
+  /** 임시저장 상태인 항목이 있는 날짜. 지정하면 주황색 점으로 별도 표시된다. */
+  draftDates?: string[];
+  draftLegendLabel?: string;
   /** 현재 목록이 필터링된 날짜(YYYY-MM-DD). 지정하면 달력에서 해당 날짜가 강조된다. */
   selectedDate?: string;
 }) {
@@ -56,6 +61,7 @@ export default function MonthCalendar({
   const monthIdx = Number(monthStr) - 1;
 
   const markedSet = new Set(markedDates);
+  const draftSet = new Set(draftDates ?? []);
   const days = getDaysInMonth(year, monthIdx);
   const canGoNext = month !== currentMonthStr();
 
@@ -108,6 +114,7 @@ export default function MonthCalendar({
       <div className="grid grid-cols-7 gap-1">
         {days.map((day) => {
           const isMarked = markedSet.has(day.date);
+          const isDraftMarked = draftSet.has(day.date);
           const isToday = day.date === today;
           const isSelected = day.date === selectedDate;
           const className = `relative flex flex-col items-center justify-center rounded py-1.5 text-xs font-medium transition ${
@@ -124,8 +131,15 @@ export default function MonthCalendar({
           const content = (
             <>
               {day.dayNum}
-              {isMarked && (
-                <span className={`mt-0.5 h-1.5 w-1.5 rounded-full ${isToday ? "bg-white" : "bg-primary-600"}`} />
+              {(isMarked || isDraftMarked) && (
+                <span className="mt-0.5 flex items-center gap-0.5">
+                  {isMarked && (
+                    <span className={`h-1.5 w-1.5 rounded-full ${isToday ? "bg-white" : "bg-primary-600"}`} />
+                  )}
+                  {isDraftMarked && (
+                    <span className={`h-1.5 w-1.5 rounded-full ${isToday ? "bg-white/70" : "bg-amber-400"}`} />
+                  )}
+                </span>
               )}
             </>
           );
@@ -145,9 +159,16 @@ export default function MonthCalendar({
       </div>
 
       <div className="mt-3 flex items-center justify-between">
-        <p className="flex items-center gap-1 text-xs text-gray-500">
-          <span className="inline-block h-1.5 w-1.5 rounded-full bg-primary-600" /> {legendLabel}
-        </p>
+        <div className="flex flex-col gap-1">
+          <p className="flex items-center gap-1 text-xs text-gray-500">
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-primary-600" /> {legendLabel}
+          </p>
+          {draftDates && draftLegendLabel && (
+            <p className="flex items-center gap-1 text-xs text-gray-500">
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-400" /> {draftLegendLabel}
+            </p>
+          )}
+        </div>
         {selectedDate && (
           <button
             type="button"
