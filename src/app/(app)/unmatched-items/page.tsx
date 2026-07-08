@@ -1,17 +1,23 @@
 import { db } from "@/lib/db";
 import { getSession } from "@/lib/session";
-import { CATEGORY_LABELS } from "@/lib/categories";
+import { CATEGORY_LABELS, isCategoryCode, type CategoryCode } from "@/lib/categories";
 import DateFilter from "./DateFilter";
 import ExportCsvButton from "./ExportCsvButton";
 import ClickableRow from "./ClickableRow";
 import ContractItemSearchPanel from "./ContractItemSearchPanel";
 
 export default async function UnmatchedItemsPage(props: {
-  searchParams: Promise<{ startDate?: string; endDate?: string; restaurant?: string }>;
+  searchParams: Promise<{
+    startDate?: string;
+    endDate?: string;
+    restaurant?: string;
+    category?: string;
+    vendorId?: string;
+  }>;
 }) {
   const session = await getSession();
   const searchParams = await props.searchParams;
-  
+
   const restaurantFilter =
     searchParams.restaurant === "A" || searchParams.restaurant === "B"
       ? searchParams.restaurant
@@ -19,6 +25,11 @@ export default async function UnmatchedItemsPage(props: {
 
   const restaurantLabel =
     searchParams.restaurant === "A" ? "본관" : searchParams.restaurant === "B" ? "후문" : "전체";
+
+  const categoryFilter: CategoryCode | undefined = isCategoryCode(searchParams.category ?? "")
+    ? (searchParams.category as CategoryCode)
+    : undefined;
+  const vendorIdFilter = searchParams.vendorId || undefined;
 
   const dateFilter: { gte?: Date; lte?: Date } = {};
   if (searchParams.startDate) {
@@ -46,16 +57,29 @@ export default async function UnmatchedItemsPage(props: {
     where: { vendorId: { in: vendorIds } },
   });
 
-  const rows = items.map((item, index) => {
-    // Find active contract for this vendor on the delivery date
-    const dDate = item.slip.deliveryDate;
-    const activeContract = contracts.find(
-      (c) => c.vendorId === item.slip.vendorId && c.startDate <= dDate && c.endDate >= dDate
-    );
+  // 업체 드롭다운 옵션: 식당/기간 필터만 적용된 시점의 전체 업체 목록
+  const vendorOptions = Array.from(new Map(items.map((i) => [i.slip.vendorId, i.slip.vendor.name])).entries())
+    .map(([id, name]) => ({ id, name }))
+    .sort((a, b) => a.name.localeCompare(b.name, "ko"));
 
-    const categoryCode = activeContract?.category ?? item.category;
+  const enriched = items
+    .map((item) => {
+      // Find active contract for this vendor on the delivery date
+      const dDate = item.slip.deliveryDate;
+      const activeContract = contracts.find(
+        (c) => c.vendorId === item.slip.vendorId && c.startDate <= dDate && c.endDate >= dDate
+      );
+      const categoryCode = activeContract?.category ?? item.category;
+      return { item, categoryCode };
+    })
+    .filter(({ item, categoryCode }) => {
+      if (categoryFilter && categoryCode !== categoryFilter) return false;
+      if (vendorIdFilter && item.slip.vendorId !== vendorIdFilter) return false;
+      return true;
+    });
+
+  const rows = enriched.map(({ item, categoryCode }, index) => {
     const itemRestaurantLabel = item.slip.restaurant === "A" ? "본관" : "후문";
-
     return {
       순번: index + 1,
       식당: itemRestaurantLabel,
@@ -66,7 +90,7 @@ export default async function UnmatchedItemsPage(props: {
       업체명: item.slip.vendor.name,
     };
   });
-  const slipIds = items.map((item) => item.slip.id);
+  const slipIds = enriched.map(({ item }) => item.slip.id);
 
   const contractItems = await db.contractItem.findMany({
     include: { contract: { include: { vendor: true } } },
@@ -91,7 +115,7 @@ export default async function UnmatchedItemsPage(props: {
       </div>
 
       <div className="flex items-center justify-between">
-        <DateFilter />
+        <DateFilter vendors={vendorOptions} />
         <ExportCsvButton data={rows} filename={`미등록품목_${restaurantLabel}_${new Date().toISOString().slice(0, 10)}.csv`} />
       </div>
 

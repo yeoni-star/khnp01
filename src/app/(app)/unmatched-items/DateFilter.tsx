@@ -2,14 +2,24 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
+import { CATEGORIES, CATEGORY_LABELS } from "@/lib/categories";
 
-export default function DateFilter() {
+export default function DateFilter({ vendors }: { vendors: { id: string; name: string }[] }) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
   const [startDate, setStartDate] = useState(searchParams.get("startDate") || "");
   const [endDate, setEndDate] = useState(searchParams.get("endDate") || "");
   const [restaurant, setRestaurant] = useState(searchParams.get("restaurant") || "all");
+  const [category, setCategory] = useState(searchParams.get("category") || "all");
+  const [vendorId, setVendorId] = useState(searchParams.get("vendorId") || "all");
+
+  const applyParam = (key: string, value: string) => {
+    const params = new URLSearchParams(searchParams);
+    if (value && value !== "all") params.set(key, value);
+    else params.delete(key);
+    router.push(`?${params.toString()}`);
+  };
 
   const handleFilter = () => {
     const params = new URLSearchParams(searchParams);
@@ -19,26 +29,42 @@ export default function DateFilter() {
     else params.delete("endDate");
     if (restaurant && restaurant !== "all") params.set("restaurant", restaurant);
     else params.delete("restaurant");
+    if (category && category !== "all") params.set("category", category);
+    else params.delete("category");
+    if (vendorId && vendorId !== "all") params.set("vendorId", vendorId);
+    else params.delete("vendorId");
     router.push(`?${params.toString()}`);
   };
 
   const handleRestaurantChange = (value: string) => {
     setRestaurant(value);
-    const params = new URLSearchParams(searchParams);
-    if (value && value !== "all") params.set("restaurant", value);
-    else params.delete("restaurant");
-    router.push(`?${params.toString()}`);
+    applyParam("restaurant", value);
+  };
+
+  const handleCategoryChange = (value: string) => {
+    setCategory(value);
+    applyParam("category", value);
+  };
+
+  const handleVendorChange = (value: string) => {
+    setVendorId(value);
+    applyParam("vendorId", value);
   };
 
   const handleReset = () => {
     setStartDate("");
     setEndDate("");
     setRestaurant("all");
+    setCategory("all");
+    setVendorId("all");
     router.push("?");
   };
 
+  const hasActiveFilter =
+    startDate || endDate || restaurant !== "all" || category !== "all" || vendorId !== "all";
+
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2">
       <select
         value={restaurant}
         onChange={(e) => handleRestaurantChange(e.target.value)}
@@ -47,6 +73,30 @@ export default function DateFilter() {
         <option value="all">식당 전체</option>
         <option value="A">본관</option>
         <option value="B">후문</option>
+      </select>
+      <select
+        value={category}
+        onChange={(e) => handleCategoryChange(e.target.value)}
+        className="rounded border border-gray-300 px-2 py-1 text-xs bg-white text-gray-700 font-medium"
+      >
+        <option value="all">카테고리 전체</option>
+        {CATEGORIES.map((c) => (
+          <option key={c} value={c}>
+            {CATEGORY_LABELS[c]}
+          </option>
+        ))}
+      </select>
+      <select
+        value={vendorId}
+        onChange={(e) => handleVendorChange(e.target.value)}
+        className="rounded border border-gray-300 px-2 py-1 text-xs bg-white text-gray-700 font-medium"
+      >
+        <option value="all">업체 전체</option>
+        {vendors.map((v) => (
+          <option key={v.id} value={v.id}>
+            {v.name}
+          </option>
+        ))}
       </select>
       <input
         type="date"
@@ -67,7 +117,7 @@ export default function DateFilter() {
       >
         조회
       </button>
-      {(startDate || endDate || restaurant !== "all") && (
+      {hasActiveFilter && (
         <button
           onClick={handleReset}
           className="rounded text-xs text-gray-500 hover:underline cursor-pointer"
