@@ -44,14 +44,14 @@ export default function MonthCalendar({
   month,
   markedDates,
   legendLabel,
-  dayBasePath,
+  selectedDate,
 }: {
   basePath: string;
   month: string;
   markedDates: string[];
   legendLabel: string;
-  /** 지정하면 날짜 클릭 시 `${dayBasePath}/${date}` 로 이동한다. */
-  dayBasePath?: string;
+  /** 현재 목록이 필터링된 날짜(YYYY-MM-DD). 지정하면 달력에서 해당 날짜가 강조된다. */
+  selectedDate?: string;
 }) {
   const router = useRouter();
   const today = todayStr();
@@ -65,6 +65,14 @@ export default function MonthCalendar({
 
   function goToMonth(delta: number) {
     router.push(`${basePath}?month=${shiftMonth(month, delta)}`);
+  }
+
+  function toggleDate(date: string) {
+    if (date === selectedDate) {
+      router.push(`${basePath}?month=${month}`);
+    } else {
+      router.push(`${basePath}?month=${month}&date=${date}`);
+    }
   }
 
   return (
@@ -105,13 +113,18 @@ export default function MonthCalendar({
         {days.map((day) => {
           const isMarked = markedSet.has(day.date);
           const isToday = day.date === today;
+          const isSelected = day.date === selectedDate;
           const className = `relative flex flex-col items-center justify-center rounded py-1.5 text-xs font-medium transition ${
             !day.isCurrentMonth
               ? "text-gray-300"
               : isToday
               ? "bg-primary-600 font-bold text-white"
+              : isSelected
+              ? "bg-primary-50 font-bold text-primary-700"
               : "text-gray-700"
-          } ${dayBasePath && day.isCurrentMonth ? "hover:bg-gray-100" : ""}`;
+          } ${day.isCurrentMonth ? "cursor-pointer hover:bg-gray-100" : ""} ${
+            isSelected ? "ring-2 ring-primary-600 ring-offset-1" : ""
+          }`;
           const content = (
             <>
               {day.dayNum}
@@ -120,14 +133,9 @@ export default function MonthCalendar({
               )}
             </>
           );
-          if (dayBasePath) {
+          if (day.isCurrentMonth) {
             return (
-              <button
-                key={day.date}
-                type="button"
-                onClick={() => router.push(`${dayBasePath}/${day.date}`)}
-                className={className}
-              >
+              <button key={day.date} type="button" onClick={() => toggleDate(day.date)} className={className}>
                 {content}
               </button>
             );
@@ -140,9 +148,20 @@ export default function MonthCalendar({
         })}
       </div>
 
-      <p className="mt-3 flex items-center gap-1 text-xs text-gray-500">
-        <span className="inline-block h-1.5 w-1.5 rounded-full bg-primary-600" /> {legendLabel}
-      </p>
+      <div className="mt-3 flex items-center justify-between">
+        <p className="flex items-center gap-1 text-xs text-gray-500">
+          <span className="inline-block h-1.5 w-1.5 rounded-full bg-primary-600" /> {legendLabel}
+        </p>
+        {selectedDate && (
+          <button
+            type="button"
+            onClick={() => router.push(`${basePath}?month=${month}`)}
+            className="text-xs font-medium text-primary-600 hover:underline"
+          >
+            {selectedDate} · 전체보기
+          </button>
+        )}
+      </div>
     </div>
   );
 }

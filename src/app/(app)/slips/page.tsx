@@ -4,27 +4,31 @@ import { getSession } from "@/lib/session";
 import { TAX_TYPE_LABELS } from "@/lib/tax";
 import CopySlipButton from "@/components/slips/CopySlipButton";
 import MonthCalendar from "@/components/common/MonthCalendar";
-import { getMonthRange, parseMonthParam } from "@/lib/month-range";
+import { getMonthRange, parseMonthParam, parseDateParam } from "@/lib/month-range";
 
 export default async function SlipsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ month?: string }>;
+  searchParams: Promise<{ month?: string; date?: string }>;
 }) {
   const sp = await searchParams;
   const month = parseMonthParam(sp.month);
   const { start, end } = getMonthRange(month);
+  const selectedDate = parseDateParam(sp.date);
 
   const session = await getSession();
-  const slips = await db.deliverySlip.findMany({
+  const monthSlips = await db.deliverySlip.findMany({
     where: { restaurant: session!.restaurant, deliveryDate: { gte: start, lte: end } },
     orderBy: { deliveryDate: "desc" },
     include: { vendor: true, items: true },
   });
 
   // 새 거래명세표 버튼만 누르고 저장을 안 한(품목이 없는 임시저장) 내역은 숨김
-  const visibleSlips = slips.filter((s) => s.status === "CONFIRMED" || s.items.length > 0);
-  const markedDates = [...new Set(visibleSlips.map((s) => s.deliveryDate.toISOString().slice(0, 10)))];
+  const visibleMonthSlips = monthSlips.filter((s) => s.status === "CONFIRMED" || s.items.length > 0);
+  const markedDates = [...new Set(visibleMonthSlips.map((s) => s.deliveryDate.toISOString().slice(0, 10)))];
+  const visibleSlips = selectedDate
+    ? visibleMonthSlips.filter((s) => s.deliveryDate.toISOString().slice(0, 10) === selectedDate)
+    : visibleMonthSlips;
 
   return (
     <div className="space-y-6">
@@ -46,6 +50,7 @@ export default async function SlipsPage({
         month={month}
         markedDates={markedDates}
         legendLabel="거래명세표가 있는 날짜"
+        selectedDate={selectedDate ?? undefined}
       />
 
       <div className="overflow-hidden rounded-md border border-gray-200 bg-white">
@@ -94,7 +99,7 @@ export default async function SlipsPage({
             {visibleSlips.length === 0 && (
               <tr>
                 <td colSpan={7} className="px-4 py-6 text-center text-gray-400">
-                  이번 달에 등록된 거래명세표가 없습니다.
+                  {selectedDate ? "해당 날짜에 등록된 거래명세표가 없습니다." : "이번 달에 등록된 거래명세표가 없습니다."}
                 </td>
               </tr>
             )}

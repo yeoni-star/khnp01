@@ -26,3 +26,17 @@ export function shiftMonth(monthStr: string, delta: number): string {
   const d = new Date(Date.UTC(y, m - 1 + delta, 1));
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
 }
+
+const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+/** 쿼리 파라미터로 받은 날짜 문자열을 검증한다. 형식이 다르면 null. */
+export function parseDateParam(raw?: string): string | null {
+  return raw && DATE_PATTERN.test(raw) ? raw : null;
+}
+
+export function getDayRange(dateStr: string): { start: Date; end: Date } {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const start = new Date(Date.UTC(y, m - 1, d));
+  const end = new Date(Date.UTC(y, m - 1, d, 23, 59, 59, 999));
+  return { start, end };
+}

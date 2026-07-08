@@ -170,6 +170,12 @@ export default function SlipItemsTable({
   const [searchQuery, setSearchQuery] = useState("");
   const [activeRowKey, setActiveRowKey] = useState<string | null>(null);
   const [itemTypeFilter, setItemTypeFilter] = useState<"ALL" | "CONTRACT" | "UNREGISTERED">("ALL");
+  const [inlineDropdown, setInlineDropdown] = useState<{
+    rowKey: string;
+    top: number;
+    left: number;
+    width: number;
+  } | null>(null);
 
   const searchPool = useMemo(() => {
     const contractOptions = contractItems.map((item) => ({
@@ -246,6 +252,44 @@ export default function SlipItemsTable({
     );
 
     setActiveRowKey(targetKey);
+  }
+
+  /** 품명 칸에 뜨는 자동완성 드롭다운에서 항목을 선택했을 때, 지정된 행에 바로 채워 넣는다. */
+  function applyItemToRow(
+    rowKey: string,
+    selected: {
+      name: string;
+      unit: string;
+      price: number;
+      category?: CategoryCode;
+      contractItemId: string | null;
+      source: "계약단가" | "미등록";
+    }
+  ) {
+    setRows((prev) =>
+      prev.map((r) => {
+        if (r.key !== rowKey) return r;
+
+        const quantityNum = Number(r.quantity) || 1;
+        const amount = quantityNum * selected.price;
+        const expectedTax = taxType === "TAXABLE" ? computeTaxAmount(amount) : 0;
+
+        return {
+          ...r,
+          itemName: selected.name,
+          category: selected.category ?? "",
+          unit: selected.unit,
+          quantity: String(quantityNum),
+          unitPrice: String(selected.price),
+          taxAmount: taxType === "TAXABLE" ? String(expectedTax) : "",
+          matchedContractItemId: selected.contractItemId,
+          matchType: selected.source === "계약단가" ? ("EXACT" as const) : ("NONE" as const),
+          priceOverridden: false,
+          suggestion: null,
+        };
+      })
+    );
+    setInlineDropdown(null);
   }
 
   function updateRow(key: string, patch: Partial<Row>) {
@@ -536,7 +580,7 @@ export default function SlipItemsTable({
 
                 return (
                   <tr key={row.key} className="align-top">
-                    <td className="px-2 py-2">
+                    <td className="relative px-2 py-2">
                       <input
                         value={row.itemName}
                         disabled={readOnly}
@@ -545,19 +589,68 @@ export default function SlipItemsTable({
                           setActiveRowKey(row.key);
                           setItemTypeFilter("CONTRACT");
                           setSearchQuery(e.target.value);
+                          if (e.target.value.trim()) {
+                            const rect = e.target.getBoundingClientRect();
+                            setInlineDropdown({ rowKey: row.key, top: rect.bottom, left: rect.left, width: rect.width });
+                          } else {
+                            setInlineDropdown(null);
+                          }
                         }}
-                        onBlur={(e) => handleItemNameBlur(row.key, e.target.value)}
-                        onFocus={() => {
+                        onBlur={(e) => {
+                          handleItemNameBlur(row.key, e.target.value);
+                          setInlineDropdown(null);
+                        }}
+                        onFocus={(e) => {
                           setActiveRowKey(row.key);
                           if (row.itemName.trim()) {
                             setItemTypeFilter("CONTRACT");
                             setSearchQuery(row.itemName);
+                            const rect = e.target.getBoundingClientRect();
+                            setInlineDropdown({ rowKey: row.key, top: rect.bottom, left: rect.left, width: rect.width });
                           }
                         }}
                         className={`w-40 rounded border px-2 py-1 text-sm disabled:bg-gray-100 ${
                           activeRowKey === row.key ? "border-primary-500 ring-1 ring-primary-500" : "border-gray-300"
                         }`}
                       />
+                      {!readOnly && inlineDropdown && inlineDropdown.rowKey === row.key && (
+                        <div
+                          style={{
+                            position: "fixed",
+                            top: inlineDropdown.top + 4,
+                            left: inlineDropdown.left,
+                            width: Math.max(inlineDropdown.width, 260),
+                          }}
+                          className="z-50 max-h-64 overflow-y-auto rounded-md border border-gray-200 bg-white shadow-lg"
+                        >
+                          {filteredSearchItems.length === 0 && (
+                            <p className="px-3 py-2 text-xs text-gray-400">검색 결과가 없습니다.</p>
+                          )}
+                          {filteredSearchItems.slice(0, 8).map((item) => (
+                            <button
+                              key={item.key}
+                              type="button"
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                applyItemToRow(row.key, item);
+                              }}
+                              className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-xs hover:bg-gray-50"
+                            >
+                              <span className="flex min-w-0 items-center gap-1.5">
+                                <span
+                                  className={`inline-block shrink-0 rounded px-1 py-0.5 text-[9px] font-bold ${
+                                    item.source === "계약단가" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
+                                  }`}
+                                >
+                                  {item.source}
+                                </span>
+                                <span className="truncate font-semibold text-gray-800">{item.name}</span>
+                              </span>
+                              <span className="shrink-0 text-gray-500">₩{item.price.toLocaleString()}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
                       {row.matchType === "EXACT" && (
                         <p className="mt-1 text-xs text-primary-600">계약단가 적용</p>
                       )}

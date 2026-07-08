@@ -3,17 +3,18 @@ import { db } from "@/lib/db";
 import { getSession } from "@/lib/session";
 import InspectionNoticeModal from "@/components/inspection/InspectionNoticeModal";
 import MonthCalendar from "@/components/common/MonthCalendar";
-import { getMonthRange, parseMonthParam } from "@/lib/month-range";
+import { getMonthRange, parseMonthParam, parseDateParam } from "@/lib/month-range";
 import NewInspectionForm from "@/components/inspection/NewInspectionForm";
 
 export default async function InspectionPage({
   searchParams,
 }: {
-  searchParams: Promise<{ month?: string }>;
+  searchParams: Promise<{ month?: string; date?: string }>;
 }) {
   const sp = await searchParams;
   const month = parseMonthParam(sp.month);
   const { start, end } = getMonthRange(month);
+  const selectedDate = parseDateParam(sp.date);
 
   const session = await getSession();
   const restaurant = session!.restaurant;
@@ -23,13 +24,16 @@ export default async function InspectionPage({
     orderBy: { logDate: "desc" },
     include: { _count: { select: { rows: true } } },
   });
-  
+
   // 임시저장/확정을 한 번도 누르지 않은(명시적 저장이 없는) 로그는 숨김
-  const visibleLogs = logs.filter(
+  const visibleMonthLogs = logs.filter(
     (l) => l.status === "CONFIRMED" || l.updatedAt.getTime() - l.createdAt.getTime() > 1000
   );
 
-  const markedDates = visibleLogs.map((l) => l.logDate.toISOString().slice(0, 10));
+  const markedDates = visibleMonthLogs.map((l) => l.logDate.toISOString().slice(0, 10));
+  const visibleLogs = selectedDate
+    ? visibleMonthLogs.filter((l) => l.logDate.toISOString().slice(0, 10) === selectedDate)
+    : visibleMonthLogs;
 
   return (
     <div className="space-y-6">
@@ -56,6 +60,7 @@ export default async function InspectionPage({
         month={month}
         markedDates={markedDates}
         legendLabel="작성된 검수일지가 있는 날짜"
+        selectedDate={selectedDate ?? undefined}
       />
 
       <div className="overflow-hidden rounded-md border border-gray-200 bg-white">
@@ -97,7 +102,7 @@ export default async function InspectionPage({
             {visibleLogs.length === 0 && (
               <tr>
                 <td colSpan={5} className="px-4 py-6 text-center text-gray-400">
-                  이번 달에 작성된 검수일지가 없습니다.
+                  {selectedDate ? "해당 날짜에 작성된 검수일지가 없습니다." : "이번 달에 작성된 검수일지가 없습니다."}
                 </td>
               </tr>
             )}
