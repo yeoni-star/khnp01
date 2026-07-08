@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { getSession } from "@/lib/session";
 import InspectionNoticeModal from "@/components/inspection/InspectionNoticeModal";
 import MonthCalendar from "@/components/common/MonthCalendar";
-import { getMonthRange, parseMonthParam, parseDateParam } from "@/lib/month-range";
+import { getMonthRange, parseMonthParam, parseDateParam, todayStr } from "@/lib/month-range";
 import NewInspectionForm from "@/components/inspection/NewInspectionForm";
 
 export default async function InspectionPage({
@@ -14,7 +14,8 @@ export default async function InspectionPage({
   const sp = await searchParams;
   const month = parseMonthParam(sp.month);
   const { start, end } = getMonthRange(month);
-  const selectedDate = parseDateParam(sp.date);
+  // 처음 진입(월/날짜 파라미터가 전혀 없을 때)은 오늘 날짜만 기본으로 보여준다.
+  const selectedDate = parseDateParam(sp.date) ?? (sp.month === undefined && sp.date === undefined ? todayStr() : null);
 
   const session = await getSession();
   const restaurant = session!.restaurant;

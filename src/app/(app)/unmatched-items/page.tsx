@@ -3,6 +3,8 @@ import { getSession } from "@/lib/session";
 import { CATEGORY_LABELS } from "@/lib/categories";
 import DateFilter from "./DateFilter";
 import ExportCsvButton from "./ExportCsvButton";
+import ClickableRow from "./ClickableRow";
+import ContractItemSearchPanel from "./ContractItemSearchPanel";
 
 export default async function UnmatchedItemsPage(props: {
   searchParams: Promise<{ startDate?: string; endDate?: string; restaurant?: string }>;
@@ -64,6 +66,20 @@ export default async function UnmatchedItemsPage(props: {
       업체명: item.slip.vendor.name,
     };
   });
+  const slipIds = items.map((item) => item.slip.id);
+
+  const contractItems = await db.contractItem.findMany({
+    include: { contract: { include: { vendor: true } } },
+    orderBy: { itemName: "asc" },
+  });
+  const searchPanelItems = contractItems.map((ci) => ({
+    id: ci.id,
+    itemName: ci.itemName,
+    category: ci.category,
+    unit: ci.unit,
+    unitPrice: ci.unitPrice,
+    vendorName: ci.contract.vendor.name,
+  }));
 
   return (
     <div className="space-y-6">
@@ -79,40 +95,46 @@ export default async function UnmatchedItemsPage(props: {
         <ExportCsvButton data={rows} filename={`미등록품목_${restaurantLabel}_${new Date().toISOString().slice(0, 10)}.csv`} />
       </div>
 
-      <div className="overflow-hidden rounded-md border border-gray-200 bg-white">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50 text-left text-xs font-medium text-gray-500">
-            <tr>
-              <th className="px-4 py-2 text-center w-16">순번</th>
-              <th className="px-4 py-2">식당</th>
-              <th className="px-4 py-2">납품일자</th>
-              <th className="px-4 py-2">품명</th>
-              <th className="px-4 py-2">카테고리</th>
-              <th className="px-4 py-2">단가</th>
-              <th className="px-4 py-2">업체</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {rows.map((row, index) => (
-              <tr key={index}>
-                <td className="px-4 py-2 text-center text-gray-500">{row.순번}</td>
-                <td className="px-4 py-2 text-gray-900">{row.식당}</td>
-                <td className="px-4 py-2 text-gray-900">{row.납품일자}</td>
-                <td className="px-4 py-2 font-medium text-gray-900">{row.품명}</td>
-                <td className="px-4 py-2 text-gray-600">{row.카테고리}</td>
-                <td className="px-4 py-2 text-gray-900">{row.단가.toLocaleString()}원</td>
-                <td className="px-4 py-2 text-gray-600">{row.업체명}</td>
-              </tr>
-            ))}
-            {rows.length === 0 && (
+      <div className="grid grid-cols-5 gap-4">
+        <div className="col-span-3 overflow-hidden rounded-md border border-gray-200 bg-white">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 text-left text-xs font-medium text-gray-500">
               <tr>
-                <td colSpan={7} className="px-4 py-6 text-center text-gray-400">
-                  해당 조건에 미등록 품목이 없습니다.
-                </td>
+                <th className="px-4 py-2 text-center w-16">순번</th>
+                <th className="px-4 py-2">식당</th>
+                <th className="px-4 py-2">납품일자</th>
+                <th className="px-4 py-2">품명</th>
+                <th className="px-4 py-2">카테고리</th>
+                <th className="px-4 py-2">단가</th>
+                <th className="px-4 py-2">업체</th>
               </tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {rows.map((row, index) => (
+                <ClickableRow key={index} href={`/slips/${slipIds[index]}`}>
+                  <td className="px-4 py-2 text-center text-gray-500">{row.순번}</td>
+                  <td className="px-4 py-2 text-gray-900">{row.식당}</td>
+                  <td className="px-4 py-2 text-gray-900">{row.납품일자}</td>
+                  <td className="px-4 py-2 font-medium text-gray-900">{row.품명}</td>
+                  <td className="px-4 py-2 text-gray-600">{row.카테고리}</td>
+                  <td className="px-4 py-2 text-gray-900">{row.단가.toLocaleString()}원</td>
+                  <td className="px-4 py-2 text-gray-600">{row.업체명}</td>
+                </ClickableRow>
+              ))}
+              {rows.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="px-4 py-6 text-center text-gray-400">
+                    해당 조건에 미등록 품목이 없습니다.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="col-span-2">
+          <ContractItemSearchPanel items={searchPanelItems} />
+        </div>
       </div>
     </div>
   );

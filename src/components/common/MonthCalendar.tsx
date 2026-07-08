@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { currentMonthStr, shiftMonth } from "@/lib/month-range";
+import { currentMonthStr, shiftMonth, todayStr } from "@/lib/month-range";
 
 const WEEK_DAYS = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -33,10 +33,6 @@ function getDaysInMonth(year: number, month: number) {
   }
 
   return days;
-}
-
-function todayStr() {
-  return new Date().toISOString().slice(0, 10);
 }
 
 export default function MonthCalendar({
@@ -158,7 +154,7 @@ export default function MonthCalendar({
             onClick={() => router.push(`${basePath}?month=${month}`)}
             className="text-xs font-medium text-primary-600 hover:underline"
           >
-            {selectedDate} · 전체보기
+            {monthIdx + 1}월 전체보기
           </button>
         )}
       </div>

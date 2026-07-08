@@ -5,6 +5,10 @@ export function currentMonthStr(): string {
   return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
 }
 
+export function todayStr(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
 /** 쿼리 파라미터로 받은 월 문자열을 검증하고, 미래 월은 이번 달로 고정한다. */
 export function parseMonthParam(raw?: string): string {
   const current = currentMonthStr();
