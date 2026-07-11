@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { getSession } from "@/lib/session";
 import MealTimeSettingsPanel from "@/components/meal/MealTimeSettingsPanel";
 import MealDailySchedulePanel from "@/components/meal/MealDailySchedulePanel";
+import CollapsibleSettingsSection from "@/components/dashboard/CollapsibleSettingsSection";
 
 export default async function DashboardPage() {
   const session = await getSession();
@@ -13,7 +14,7 @@ export default async function DashboardPage() {
   monthStart.setHours(0, 0, 0, 0);
 
   const [draftCount, confirmedThisMonth, vendorCount] = await Promise.all([
-    db.deliverySlip.count({ where: { restaurant, status: "DRAFT" } }),
+    db.deliverySlip.count({ where: { restaurant, status: "DRAFT", items: { some: {} } } }),
     db.deliverySlip.count({
       where: { restaurant, status: "CONFIRMED", deliveryDate: { gte: monthStart } },
     }),
@@ -71,11 +72,10 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      <div className="space-y-4">
-        <h2 className="mb-2 text-sm font-semibold text-gray-900">설정</h2>
+      <CollapsibleSettingsSection>
         <MealTimeSettingsPanel />
         <MealDailySchedulePanel />
-      </div>
+      </CollapsibleSettingsSection>
     </div>
   );
 }

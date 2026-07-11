@@ -2,6 +2,9 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import PrintButton from "@/components/reports/PrintButton";
+import DeleteInspectionLogButton from "@/components/inspection/DeleteInspectionLogButton";
 import {
   confirmInspectionLog,
   importConfirmedSlipsToLog,
@@ -116,6 +119,7 @@ export default function InspectionLogTable({
   const [message, setMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
   const [pending, startTransition] = useTransition();
   const [importing, setImporting] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [colWidths, setColWidths] = useState<Record<string, number>>(() => buildDefaultColWidths(columns));
   const [bulkInputs, setBulkInputs] = useState<Record<string, string>>({});
 
@@ -202,6 +206,23 @@ export default function InspectionLogTable({
     });
   }
 
+  async function handleExport() {
+    setMessage(null);
+    setExporting(true);
+    try {
+      if (!readOnly) {
+        const result = await saveInspectionLog(logId, inspectorName, JSON.stringify(buildPayload()));
+        if (!result.ok) {
+          setMessage({ type: "error", text: result.message });
+          return;
+        }
+      }
+      window.location.href = `/api/inspection/export?date=${dateStr}`;
+    } finally {
+      setExporting(false);
+    }
+  }
+
   function handleReopen() {
     if (!confirm("확정을 취소하고 다시 편집할 수 있게 할까요?")) return;
     setMessage(null);
@@ -215,8 +236,66 @@ export default function InspectionLogTable({
     });
   }
 
+  const statusActions = readOnly ? (
+    <button
+      type="button"
+      onClick={handleReopen}
+      disabled={pending}
+      className="rounded border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+    >
+      {pending ? "처리 중..." : "수정"}
+    </button>
+  ) : (
+    <>
+      <button
+        type="button"
+        onClick={handleSave}
+        disabled={pending}
+        className="rounded border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+      >
+        {pending ? "저장 중..." : "저장"}
+      </button>
+      <button
+        type="button"
+        onClick={handleConfirm}
+        disabled={pending}
+        className="rounded bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
+      >
+        {pending ? "처리 중..." : "확정"}
+      </button>
+    </>
+  );
+
   return (
     <div className="space-y-4 print:mx-auto print:max-w-[210mm]">
+      <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
+        <h1 className="text-lg font-semibold text-gray-900">식재료 검수일지 - {dateStr}</h1>
+        <div className="flex flex-wrap items-center gap-2">
+          <PrintButton />
+          <button
+            type="button"
+            onClick={handleExport}
+            disabled={exporting}
+            className="rounded border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+          >
+            {exporting ? "내보내는 중..." : "엑셀로 내보내기"}
+          </button>
+          {statusActions}
+          <DeleteInspectionLogButton logId={logId} />
+        </div>
+      </div>
+      <h1 className="hidden text-2xl font-semibold text-gray-900 print:block">식재료 검수일지</h1>
+
+      {columns.length === 0 && (
+        <div className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800 print:hidden">
+          아직 검수 항목이 설정되지 않았습니다.{" "}
+          <Link href="/inspection/template" className="font-medium underline">
+            양식 설정
+          </Link>
+          에서 검수할 컬럼을 먼저 추가해 주세요.
+        </div>
+      )}
+
       {readOnly ? (
         <div className="rounded-md border border-primary-200 bg-primary-50 px-3 py-2 text-xs font-medium text-primary-700 print:hidden">
           확정된 검수일지입니다. 수정하려면 아래 &apos;수정&apos; 버튼을 눌러 확정을 취소해 주세요.
@@ -500,37 +579,7 @@ export default function InspectionLogTable({
         </p>
       )}
 
-      <div className="flex gap-2 print:hidden">
-        {readOnly ? (
-          <button
-            type="button"
-            onClick={handleReopen}
-            disabled={pending}
-            className="rounded border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-          >
-            {pending ? "처리 중..." : "수정"}
-          </button>
-        ) : (
-          <>
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={pending}
-              className="rounded border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-            >
-              {pending ? "저장 중..." : "저장"}
-            </button>
-            <button
-              type="button"
-              onClick={handleConfirm}
-              disabled={pending}
-              className="rounded bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
-            >
-              {pending ? "처리 중..." : "확정"}
-            </button>
-          </>
-        )}
-      </div>
+      <div className="flex gap-2 print:hidden">{statusActions}</div>
     </div>
   );
 }
