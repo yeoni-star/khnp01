@@ -4,7 +4,9 @@ import { getSession } from "@/lib/session";
 import { TAX_TYPE_LABELS } from "@/lib/tax";
 import CopySlipButton from "@/components/slips/CopySlipButton";
 import MonthCalendar from "@/components/common/MonthCalendar";
+import WeeklyCategorySpendPanel from "@/components/slips/WeeklyCategorySpendPanel";
 import { getMonthRange, parseMonthParam, parseDateParam, todayStr } from "@/lib/month-range";
+import { buildWeeklyCategorySpendReport } from "@/lib/weekly-category-spend";
 
 export default async function SlipsPage({
   searchParams,
@@ -36,6 +38,8 @@ export default async function SlipsPage({
     ? visibleMonthSlips.filter((s) => s.deliveryDate.toISOString().slice(0, 10) === selectedDate)
     : visibleMonthSlips;
 
+  const weeklySpendReport = await buildWeeklyCategorySpendReport(session!.restaurant);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -51,15 +55,18 @@ export default async function SlipsPage({
         </Link>
       </div>
 
-      <MonthCalendar
-        basePath="/slips"
-        month={month}
-        markedDates={markedDates}
-        legendLabel="거래명세표가 있는 날짜"
-        draftDates={draftDates}
-        draftLegendLabel="임시저장된 거래명세표가 있는 날짜"
-        selectedDate={selectedDate ?? undefined}
-      />
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+        <MonthCalendar
+          basePath="/slips"
+          month={month}
+          markedDates={markedDates}
+          legendLabel="거래명세표가 있는 날짜"
+          draftDates={draftDates}
+          draftLegendLabel="임시저장된 거래명세표가 있는 날짜"
+          selectedDate={selectedDate ?? undefined}
+        />
+        <WeeklyCategorySpendPanel report={weeklySpendReport} />
+      </div>
 
       <div className="overflow-hidden rounded-md border border-gray-200 bg-white">
         <table className="w-full text-sm">
