@@ -8,6 +8,10 @@ import { TAX_TYPE_LABELS } from "@/lib/tax";
 
 const WIDTH_STEP = 8;
 const MIN_COL_WIDTH = 24;
+const FONT_SIZE_STEP = 1;
+const MIN_FONT_SIZE = 6;
+const MAX_FONT_SIZE = 14;
+const DEFAULT_FONT_SIZE = 12;
 
 type FixedColumn = "no" | "name" | "unit" | "qty" | "price" | "amount" | "tax";
 
@@ -77,6 +81,7 @@ export default function VendorReportTable({
   const [reviewer2, setReviewer2] = useState("");
   const [colWidths, setColWidths] = useState<Record<FixedColumn, number>>(DEFAULT_COL_WIDTHS);
   const [visibleCounts, setVisibleCounts] = useState<Record<string, number>>({});
+  const [fontSize, setFontSize] = useState(DEFAULT_FONT_SIZE);
 
   function adjustWidth(col: FixedColumn, delta: number) {
     setColWidths((prev) => ({
@@ -224,6 +229,24 @@ export default function VendorReportTable({
           >
             + 10칸 추가
           </button>
+          <div className="flex items-center gap-1 rounded border border-gray-300 px-2 py-1 text-xs text-gray-700">
+            <span>글자크기</span>
+            <button
+              type="button"
+              onClick={() => setFontSize((v) => Math.max(MIN_FONT_SIZE, v - FONT_SIZE_STEP))}
+              className="flex h-5 w-5 items-center justify-center rounded bg-gray-200 text-xs text-gray-600 hover:bg-gray-300"
+            >
+              -
+            </button>
+            <span className="w-5 text-center">{fontSize}</span>
+            <button
+              type="button"
+              onClick={() => setFontSize((v) => Math.min(MAX_FONT_SIZE, v + FONT_SIZE_STEP))}
+              className="flex h-5 w-5 items-center justify-center rounded bg-gray-200 text-xs text-gray-600 hover:bg-gray-300"
+            >
+              +
+            </button>
+          </div>
           <PrintButton />
           <a
             href={`/api/reports/vendor-export?vendorId=${vendorId}&start=${startStr}&end=${endStr}${categoriesParam ? `&categories=${encodeURIComponent(categoriesParam)}` : ""}`}
@@ -234,7 +257,7 @@ export default function VendorReportTable({
         </div>
       </div>
 
-      <div className="mx-auto w-full max-w-[210mm] bg-white p-8 print:p-0">
+      <div className="print-landscape mx-auto w-full max-w-[210mm] bg-white p-8 print:max-w-[273mm] print:p-0">
         <div className="mb-4">
           <h2 className="mb-8 text-center text-4xl font-bold tracking-[0.3em] text-gray-900 underline underline-offset-8">
             납품보고서
@@ -288,7 +311,7 @@ export default function VendorReportTable({
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-max border-collapse text-xs">
+          <table className="w-full min-w-max border-collapse" style={{ fontSize }}>
             <thead>
               <tr className="bg-gray-50 text-center">
                 <th rowSpan={3} className="border border-gray-400 px-1 py-1" style={{ width: colWidths.no }}>

@@ -53,7 +53,13 @@ body {
   @page {
     margin: 12mm;
   }
+  @page report-landscape {
+    size: landscape;
+  }
   body {
     background: #ffffff;
+  }
+  .print-landscape {
+    page: report-landscape;
   }
 }
