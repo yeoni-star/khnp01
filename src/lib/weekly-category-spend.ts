@@ -13,6 +13,7 @@ export type WeeklyCategorySpendReport = {
   rows: WeeklyCategorySpendRow[];
   lastMonthLabel: string;
   thisMonthLabel: string;
+  thisMonthDaysElapsed: number;
 };
 
 type AmountInput = { category: CategoryCode; amount: number };
@@ -84,5 +85,6 @@ export async function buildWeeklyCategorySpendReport(restaurant: RestaurantCode)
     rows,
     lastMonthLabel: lastMonth,
     thisMonthLabel: thisMonth,
+    thisMonthDaysElapsed,
   };
 }

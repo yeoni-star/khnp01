@@ -55,7 +55,7 @@ export default async function SlipsPage({
         </Link>
       </div>
 
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-stretch">
         <MonthCalendar
           basePath="/slips"
           month={month}
