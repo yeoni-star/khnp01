@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import Link from "next/link";
 import PrintButton from "./PrintButton";
 import type { VendorReport, VendorReportItemRow } from "@/lib/vendor-report";
@@ -12,6 +12,21 @@ const FONT_SIZE_STEP = 1;
 const MIN_FONT_SIZE = 6;
 const MAX_FONT_SIZE = 14;
 const DEFAULT_FONT_SIZE = 12;
+
+const DATE_COL_WIDTH_STEP = 4;
+const MIN_DATE_COL_WIDTH = 14;
+const DEFAULT_DATE_COL_WIDTH = 32;
+
+// A4 실제 인쇄 가능 폭(페이지 폭 - 좌우 여백, globals.css @page margin 12mm과 맞춤) 을 CSS px로 환산.
+// 약간의 안전 여백(SAFETY_MARGIN_PX)만 남겨둔다 - 칸너비 조절(+/-) 버튼은 인쇄 시 사라지므로
+// 화면에서 보이는 폭보다 실제 인쇄 폭이 더 좁게 나온다는 점은 감안할 필요 없음.
+const MM_TO_PX = 96 / 25.4;
+const PAGE_MARGIN_MM = 12;
+const SAFETY_MARGIN_PX = 90;
+const PORTRAIT_USABLE_PX = (210 - PAGE_MARGIN_MM * 2) * MM_TO_PX - SAFETY_MARGIN_PX;
+const LANDSCAPE_USABLE_PX = (297 - PAGE_MARGIN_MM * 2) * MM_TO_PX - SAFETY_MARGIN_PX;
+// 자동 축소는 이 배율 밑으로는 내려가지 않는다 (더 줄이면 사람이 읽기 어려움) - 이보다 더 필요하면 가로 전환을 권장.
+const MIN_AUTO_FIT_SCALE = 0.55;
 
 type FixedColumn = "no" | "name" | "unit" | "qty" | "price" | "amount" | "tax";
 
@@ -82,6 +97,31 @@ export default function VendorReportTable({
   const [colWidths, setColWidths] = useState<Record<FixedColumn, number>>(DEFAULT_COL_WIDTHS);
   const [visibleCounts, setVisibleCounts] = useState<Record<string, number>>({});
   const [fontSize, setFontSize] = useState(DEFAULT_FONT_SIZE);
+  const [dateColWidth, setDateColWidth] = useState(DEFAULT_DATE_COL_WIDTH);
+  const [orientation, setOrientation] = useState<"portrait" | "landscape">("portrait");
+  const isLandscape = orientation === "landscape";
+
+  function handleOrientationChange(next: "portrait" | "landscape") {
+    setOrientation(next);
+    // 가로는 페이지 세로 폭이 짧아져서 줄 수가 줄어드니, 기본 글자크기를 살짝 낮춰 페이지 수 증가를 완화한다.
+    setFontSize(next === "landscape" ? 10 : DEFAULT_FONT_SIZE);
+  }
+
+  // 가로 인쇄는 페이지 자체를 landscape로 바꿔야 하는데, 이건 인쇄 중인 문서 전체에 적용되는 설정이라
+  // (이 보고서는 자기 전용 페이지에서만 열리므로) 켜져 있을 때만 <style>을 주입하는 방식으로 안전하게 처리한다.
+  // 참고: 특정 요소에만 페이지를 지정하는 CSS(@page 이름 + page 속성) 방식은 브라우저에 따라
+  // 인쇄물이 90도 회전되어 나오는 문제가 있어 사용하지 않는다.
+  useEffect(() => {
+    if (!isLandscape) return;
+    const style = document.createElement("style");
+    style.textContent = "@media print { @page { size: landscape; } }";
+    document.head.appendChild(style);
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, [isLandscape]);
+
+  const fixedColsWidth = Object.values(colWidths).reduce((sum, w) => sum + w, 0);
 
   function adjustWidth(col: FixedColumn, delta: number) {
     setColWidths((prev) => ({
@@ -145,6 +185,21 @@ export default function VendorReportTable({
   const dateColumns = displayWeeks.flatMap((w) => w.dates);
   const colSpanCount = dateColumns.length || 1;
   const totalCols = 7 + colSpanCount;
+
+  // 1차 목표: 세로(A4)는 최대한 한 페이지 폭에 맞춰 자동으로 축소한다 (표 폭을 꽉 채울 필요는 없음).
+  // 2차 목표: 그래도(최소 가독 배율까지 줄여도) 안 들어가면 그 이상은 줄이지 않고, 가로 전환을 안내한다.
+  // (CSS zoom/transform은 브라우저 인쇄 엔진에서 무시되는 경우가 있어, 실제 픽셀 값 자체를 줄인다.)
+  const naturalTableWidthPx = fixedColsWidth + dateColumns.length * dateColWidth;
+  const usablePrintWidthPx = isLandscape ? LANDSCAPE_USABLE_PX : PORTRAIT_USABLE_PX;
+  const rawAutoFitScale = usablePrintWidthPx / naturalTableWidthPx;
+  const autoFitScale = Math.min(1, Math.max(MIN_AUTO_FIT_SCALE, rawAutoFitScale));
+  const suggestLandscape = !isLandscape && rawAutoFitScale < MIN_AUTO_FIT_SCALE;
+
+  const effectiveColWidths = Object.fromEntries(
+    (Object.entries(colWidths) as [FixedColumn, number][]).map(([key, w]) => [key, w * autoFitScale])
+  ) as Record<FixedColumn, number>;
+  const effectiveDateColWidth = dateColWidth * autoFitScale;
+  const effectiveFontSize = fontSize * autoFitScale;
 
   function renderItemRow(item: VendorReportItemRow, index: number) {
     return (
@@ -229,6 +284,26 @@ export default function VendorReportTable({
           >
             + 10칸 추가
           </button>
+          <div className="flex overflow-hidden rounded border border-gray-300 text-xs">
+            <button
+              type="button"
+              onClick={() => handleOrientationChange("portrait")}
+              className={`px-2 py-1 font-medium ${
+                !isLandscape ? "bg-primary-600 text-white" : "bg-white text-gray-600 hover:bg-gray-50"
+              }`}
+            >
+              세로
+            </button>
+            <button
+              type="button"
+              onClick={() => handleOrientationChange("landscape")}
+              className={`px-2 py-1 font-medium ${
+                isLandscape ? "bg-primary-600 text-white" : "bg-white text-gray-600 hover:bg-gray-50"
+              }`}
+            >
+              가로
+            </button>
+          </div>
           <div className="flex items-center gap-1 rounded border border-gray-300 px-2 py-1 text-xs text-gray-700">
             <span>글자크기</span>
             <button
@@ -247,6 +322,24 @@ export default function VendorReportTable({
               +
             </button>
           </div>
+          <div className="flex items-center gap-1 rounded border border-gray-300 px-2 py-1 text-xs text-gray-700">
+            <span>납품현황 칸너비</span>
+            <button
+              type="button"
+              onClick={() => setDateColWidth((v) => Math.max(MIN_DATE_COL_WIDTH, v - DATE_COL_WIDTH_STEP))}
+              className="flex h-5 w-5 items-center justify-center rounded bg-gray-200 text-xs text-gray-600 hover:bg-gray-300"
+            >
+              -
+            </button>
+            <span className="w-5 text-center">{dateColWidth}</span>
+            <button
+              type="button"
+              onClick={() => setDateColWidth((v) => v + DATE_COL_WIDTH_STEP)}
+              className="flex h-5 w-5 items-center justify-center rounded bg-gray-200 text-xs text-gray-600 hover:bg-gray-300"
+            >
+              +
+            </button>
+          </div>
           <PrintButton />
           <a
             href={`/api/reports/vendor-export?vendorId=${vendorId}&start=${startStr}&end=${endStr}${categoriesParam ? `&categories=${encodeURIComponent(categoriesParam)}` : ""}`}
@@ -257,13 +350,30 @@ export default function VendorReportTable({
         </div>
       </div>
 
-      <div className="print-landscape mx-auto w-full max-w-[210mm] bg-white p-8 print:max-w-[273mm] print:p-0">
-        <div className="mb-4">
-          <h2 className="mb-8 text-center text-4xl font-bold tracking-[0.3em] text-gray-900 underline underline-offset-8">
+      {suggestLandscape && (
+        <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800 print:hidden">
+          ⚠ 항목/칸이 많아 세로로는 최소 배율({Math.round(MIN_AUTO_FIT_SCALE * 100)}%)까지 줄여도 A4 한 장에 다
+          안 들어가요. 위의 &quot;가로&quot; 버튼으로 전환해 보세요.
+        </p>
+      )}
+
+      <div
+        className={`mx-auto w-full max-w-[210mm] bg-white p-8 print:p-0 ${
+          isLandscape ? "print-landscape print:max-w-[273mm]" : ""
+        }`}
+      >
+        <div className={isLandscape ? "mb-2" : "mb-4"}>
+          <h2
+            className={
+              isLandscape
+                ? "mb-2 text-center text-2xl font-bold tracking-[0.2em] text-gray-900 underline underline-offset-4"
+                : "mb-8 text-center text-4xl font-bold tracking-[0.3em] text-gray-900 underline underline-offset-8"
+            }
+          >
             납품보고서
           </h2>
           <div className="flex items-end justify-between">
-            <div className="space-y-4 text-base text-gray-800">
+            <div className={`text-base text-gray-800 ${isLandscape ? "space-y-1" : "space-y-4"}`}>
               <p>
                 <span className="inline-block w-20 tracking-[0.5em]">업체명</span>: &nbsp; {vendorName}
                 {categoryLabel ? `(${categoryLabel})` : ""}
@@ -284,8 +394,8 @@ export default function VendorReportTable({
                   <th className="w-24 border border-gray-400 py-1 font-medium text-gray-700">차장</th>
                 </tr>
                 <tr>
-                  <td className="h-16 border border-gray-400" />
-                  <td className="h-16 border border-gray-400" />
+                  <td className={`border border-gray-400 ${isLandscape ? "h-8" : "h-16"}`} />
+                  <td className={`border border-gray-400 ${isLandscape ? "h-8" : "h-16"}`} />
                 </tr>
                 <tr>
                   <td className="border border-gray-400">
@@ -311,52 +421,52 @@ export default function VendorReportTable({
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-max border-collapse" style={{ fontSize }}>
+          <table className="w-full min-w-max border-collapse" style={{ fontSize: effectiveFontSize }}>
             <thead>
               <tr className="bg-gray-50 text-center">
-                <th rowSpan={3} className="border border-gray-400 px-1 py-1" style={{ width: colWidths.no }}>
+                <th rowSpan={3} className="border border-gray-400 px-1 py-1" style={{ width: effectiveColWidths.no }}>
                   <ColumnHeaderLabel
                     label="번호"
                     onDecrease={() => adjustWidth("no", -WIDTH_STEP)}
                     onIncrease={() => adjustWidth("no", WIDTH_STEP)}
                   />
                 </th>
-                <th rowSpan={3} className="border border-gray-400 px-2 py-1" style={{ width: colWidths.name }}>
+                <th rowSpan={3} className="border border-gray-400 px-2 py-1" style={{ width: effectiveColWidths.name }}>
                   <ColumnHeaderLabel
                     label="품명/규격"
                     onDecrease={() => adjustWidth("name", -WIDTH_STEP)}
                     onIncrease={() => adjustWidth("name", WIDTH_STEP)}
                   />
                 </th>
-                <th rowSpan={3} className="border border-gray-400 px-1 py-1" style={{ width: colWidths.unit }}>
+                <th rowSpan={3} className="border border-gray-400 px-1 py-1" style={{ width: effectiveColWidths.unit }}>
                   <ColumnHeaderLabel
                     label="단위"
                     onDecrease={() => adjustWidth("unit", -WIDTH_STEP)}
                     onIncrease={() => adjustWidth("unit", WIDTH_STEP)}
                   />
                 </th>
-                <th rowSpan={3} className="border border-gray-400 px-1 py-1" style={{ width: colWidths.qty }}>
+                <th rowSpan={3} className="border border-gray-400 px-1 py-1" style={{ width: effectiveColWidths.qty }}>
                   <ColumnHeaderLabel
                     label="수량"
                     onDecrease={() => adjustWidth("qty", -WIDTH_STEP)}
                     onIncrease={() => adjustWidth("qty", WIDTH_STEP)}
                   />
                 </th>
-                <th rowSpan={3} className="border border-gray-400 px-1 py-1" style={{ width: colWidths.price }}>
+                <th rowSpan={3} className="border border-gray-400 px-1 py-1" style={{ width: effectiveColWidths.price }}>
                   <ColumnHeaderLabel
                     label="단가"
                     onDecrease={() => adjustWidth("price", -WIDTH_STEP)}
                     onIncrease={() => adjustWidth("price", WIDTH_STEP)}
                   />
                 </th>
-                <th rowSpan={3} className="border border-gray-400 px-1 py-1" style={{ width: colWidths.amount }}>
+                <th rowSpan={3} className="border border-gray-400 px-1 py-1" style={{ width: effectiveColWidths.amount }}>
                   <ColumnHeaderLabel
                     label="금액"
                     onDecrease={() => adjustWidth("amount", -WIDTH_STEP)}
                     onIncrease={() => adjustWidth("amount", WIDTH_STEP)}
                   />
                 </th>
-                <th rowSpan={3} className="border border-gray-400 px-1 py-1" style={{ width: colWidths.tax }}>
+                <th rowSpan={3} className="border border-gray-400 px-1 py-1" style={{ width: effectiveColWidths.tax }}>
                   <ColumnHeaderLabel
                     label="세액"
                     onDecrease={() => adjustWidth("tax", -WIDTH_STEP)}
@@ -381,11 +491,21 @@ export default function VendorReportTable({
                 {displayWeeks.map((week) =>
                   week.dates.map((date) => {
                     if (date.startsWith("empty-")) {
-                      return <th key={date} className="min-w-[32px] border border-gray-400 px-1 py-1 text-[10px] font-normal tracking-tighter" />;
+                      return (
+                        <th
+                          key={date}
+                          className="border border-gray-400 px-1 py-1 text-[10px] font-normal tracking-tighter"
+                          style={{ width: effectiveDateColWidth, minWidth: effectiveDateColWidth }}
+                        />
+                      );
                     }
                     const [, m, d] = date.split("-");
                     return (
-                      <th key={date} className="min-w-[32px] border border-gray-400 px-1 py-1 text-[10px] font-normal tracking-tighter">
+                      <th
+                        key={date}
+                        className="border border-gray-400 px-1 py-1 text-[10px] font-normal tracking-tighter"
+                        style={{ width: effectiveDateColWidth, minWidth: effectiveDateColWidth }}
+                      >
                         {parseInt(m, 10)}/{parseInt(d, 10)}
                       </th>
                     );

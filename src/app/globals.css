@@ -53,13 +53,15 @@ body {
   @page {
     margin: 12mm;
   }
-  @page report-landscape {
-    size: landscape;
-  }
   body {
     background: #ffffff;
   }
-  .print-landscape {
-    page: report-landscape;
+  /* 가로 인쇄는 페이지 세로 폭(210mm)이 세로 인쇄(297mm)보다 짧아 줄 수가 확 줄어드므로,
+     칸 안쪽 여백과 줄간격을 줄여서 페이지 수가 과도하게 늘지 않게 한다. */
+  .print-landscape table th,
+  .print-landscape table td {
+    padding-top: 1px !important;
+    padding-bottom: 1px !important;
+    line-height: 1.15 !important;
   }
 }
