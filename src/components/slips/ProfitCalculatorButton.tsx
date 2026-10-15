@@ -7,6 +7,7 @@ import {
   computeProfit,
   computeRevenue,
   materialCostFor,
+  parseSavedPrices,
   parseWholeNumber,
   type MaterialCost,
   type TaxMode,
@@ -25,8 +26,20 @@ type HistoryEntry = {
 };
 
 const DEFAULT_PRICES = ["4000", "4500", "5600"];
-const TIER_LABELS = ["교대식수", "인원 (1)", "인원 (2)"];
+const TIER_LABELS = ["교대식수", "직원", "협력사"];
 const MAX_HISTORY = 5;
+const PRICES_STORAGE_KEY = "khnp:profit-calc:prices:v1";
+// 식당별로 입력받지 않는 항목(본관은 교대식수 없음). 입력칸이 없으니 값은 항상 비어 있어 매출에 더해지지 않는다.
+const HIDDEN_TIERS: Record<RestaurantCode, number[]> = { A: [0], B: [] };
+
+function loadSavedPrices(): string[] {
+  if (typeof window === "undefined") return DEFAULT_PRICES;
+  try {
+    return parseSavedPrices(window.localStorage.getItem(PRICES_STORAGE_KEY)) ?? DEFAULT_PRICES;
+  } catch {
+    return DEFAULT_PRICES;
+  }
+}
 
 function emptyCounts(): Counts {
   return { A: ["", "", ""], B: ["", "", ""] };
@@ -54,7 +67,10 @@ export default function ProfitCalculatorButton({
 }) {
   const [open, setOpen] = useState(false);
   const [taxMode, setTaxMode] = useState<TaxMode>("INCLUDED");
-  const [prices, setPrices] = useState<string[]>(DEFAULT_PRICES);
+  const [initialPrices] = useState<string[]>(loadSavedPrices);
+  const [savedPrices, setSavedPrices] = useState<string[]>(initialPrices);
+  const [prices, setPrices] = useState<string[]>(initialPrices);
+  const [saveError, setSaveError] = useState(false);
   const [counts, setCounts] = useState<Counts>(emptyCounts);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const historySeq = useRef(0);
@@ -79,6 +95,20 @@ export default function ProfitCalculatorButton({
   }
 
   const results = computeResults();
+
+  const pricesSaved = prices.join(",") === savedPrices.join(",");
+
+  function savePrices() {
+    const normalized = prices.map((p) => String(parseWholeNumber(p)));
+    try {
+      window.localStorage.setItem(PRICES_STORAGE_KEY, JSON.stringify(normalized));
+      setSaveError(false);
+      setSavedPrices(normalized);
+      setPrices(normalized);
+    } catch {
+      setSaveError(true);
+    }
+  }
 
   function setPrice(index: number, value: string) {
     setPrices((prev) => prev.map((p, i) => (i === index ? value.replace(/\D/g, "") : p)));
@@ -139,7 +169,7 @@ export default function ProfitCalculatorButton({
               <div>
                 <h2 className="text-base font-semibold text-gray-900">손익계산</h2>
                 <p className="mt-0.5 text-xs text-gray-500">
-                  {monthLabel(month)} 확정 거래명세표 기준 · 계산기처럼 쓰는 화면이라 입력값은 저장되지 않아요.
+                  {monthLabel(month)} 확정 거래명세표 기준 · 인원 입력값과 계산 기록은 저장되지 않고, 단가만 저장할 수 있어요.
                 </p>
               </div>
               <button
@@ -170,11 +200,26 @@ export default function ProfitCalculatorButton({
               </div>
 
               <div>
-                <p className="mb-1 text-xs font-medium text-gray-600">단가 (수정 가능, 두 식당 공통)</p>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="mb-1 flex items-center justify-between gap-2">
+                  <p className="text-xs font-medium text-gray-600">단가 (수정 가능)</p>
+                  <div className="flex items-center gap-2">
+                    {saveError && <span className="text-[11px] text-red-600">이 브라우저에서는 저장할 수 없어요</span>}
+                    <button
+                      type="button"
+                      onClick={savePrices}
+                      disabled={pricesSaved}
+                      className="rounded border border-gray-300 px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-default disabled:border-transparent disabled:bg-transparent disabled:text-gray-400"
+                    >
+                      {pricesSaved ? "저장됨" : "단가 저장"}
+                    </button>
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 items-end gap-2">
                   {TIER_LABELS.map((label, i) => (
                     <div key={label}>
-                      <label className="mb-0.5 block text-[11px] text-gray-500">{label} 단가(원)</label>
+                      <label className="mb-0.5 block text-[11px] text-gray-500">
+                        {i === 0 ? "교대식수(후문) 단가(원)" : `${label} 단가(원)`}
+                      </label>
                       <input
                         inputMode="numeric"
                         value={prices[i]}
@@ -195,7 +240,8 @@ export default function ProfitCalculatorButton({
                       <p className="mb-2 text-sm font-semibold text-gray-900">{RESTAURANT_LABELS[r]}</p>
 
                       <div className="space-y-2">
-                        {TIER_LABELS.map((label, i) => (
+                        {TIER_LABELS.map((label, i) =>
+                          HIDDEN_TIERS[r].includes(i) ? null : (
                           <div key={label} className="flex items-center gap-2">
                             <label className="w-16 shrink-0 text-xs text-gray-600">{label}</label>
                             <input
@@ -210,7 +256,8 @@ export default function ProfitCalculatorButton({
                               {won(parseWholeNumber(prices[i]) * parseWholeNumber(counts[r][i]))}
                             </span>
                           </div>
-                        ))}
+                          )
+                        )}
                       </div>
 
                       <dl className="mt-3 space-y-1 border-t border-gray-100 pt-2 text-sm">

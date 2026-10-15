@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeProfit, computeRevenue, materialCostFor, parseWholeNumber } from "./profit-calc";
+import { computeProfit, computeRevenue, materialCostFor, parseSavedPrices, parseWholeNumber } from "./profit-calc";
 
 describe("parseWholeNumber", () => {
   it("숫자만 남겨 정수로 바꾼다", () => {
@@ -46,5 +46,24 @@ describe("computeProfit", () => {
 
   it("식재료비가 더 크면 음수(손실)가 된다", () => {
     expect(computeProfit(500_000, 800_000)).toBe(-300_000);
+  });
+});
+
+describe("parseSavedPrices", () => {
+  it("숫자 문자열 3개 배열이면 그대로 돌려준다", () => {
+    expect(parseSavedPrices('["4000","4500","5600"]')).toEqual(["4000", "4500", "5600"]);
+  });
+
+  it("저장된 값이 없거나 깨져 있으면 null이다", () => {
+    expect(parseSavedPrices(null)).toBeNull();
+    expect(parseSavedPrices("")).toBeNull();
+    expect(parseSavedPrices("not json")).toBeNull();
+  });
+
+  it("개수가 다르거나 숫자가 아닌 값이 섞여 있으면 null이다", () => {
+    expect(parseSavedPrices('["4000","4500"]')).toBeNull();
+    expect(parseSavedPrices('["4000","abc","5600"]')).toBeNull();
+    expect(parseSavedPrices("[4000,4500,5600]")).toBeNull();
+    expect(parseSavedPrices('{"a":1}')).toBeNull();
   });
 });

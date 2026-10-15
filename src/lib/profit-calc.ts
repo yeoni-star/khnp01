@@ -20,6 +20,19 @@ export function parseWholeNumber(text: string): number {
   return Number.isSafeInteger(n) ? n : 0;
 }
 
+/** 브라우저에 저장해 둔 단가 문자열을 검증한다. 단가 3개(숫자)가 아니면 null. */
+export function parseSavedPrices(raw: string | null, expectedCount = 3): string[] | null {
+  if (!raw) return null;
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed) || parsed.length !== expectedCount) return null;
+    if (!parsed.every((v) => typeof v === "string" && /^\d+$/.test(v))) return null;
+    return parsed as string[];
+  } catch {
+    return null;
+  }
+}
+
 /** 식당 매출 = Σ(단가 × 인원). 단가와 인원은 같은 순서의 문자열 입력값이다. */
 export function computeRevenue(prices: string[], counts: string[]): number {
   return prices.reduce((sum, price, i) => sum + parseWholeNumber(price) * parseWholeNumber(counts[i] ?? ""), 0);
