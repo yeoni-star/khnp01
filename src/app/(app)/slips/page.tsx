@@ -5,8 +5,10 @@ import { TAX_TYPE_LABELS } from "@/lib/tax";
 import CopySlipButton from "@/components/slips/CopySlipButton";
 import MonthCalendar from "@/components/common/MonthCalendar";
 import WeeklyCategorySpendPanel from "@/components/slips/WeeklyCategorySpendPanel";
+import ProfitCalculatorButton from "@/components/slips/ProfitCalculatorButton";
 import { getMonthRange, parseMonthParam, parseDateParam, todayStr } from "@/lib/month-range";
 import { buildWeeklyCategorySpendReport } from "@/lib/weekly-category-spend";
+import { getMonthlyMaterialCost } from "@/lib/monthly-material-cost";
 
 export default async function SlipsPage({
   searchParams,
@@ -38,7 +40,10 @@ export default async function SlipsPage({
     ? visibleMonthSlips.filter((s) => s.deliveryDate.toISOString().slice(0, 10) === selectedDate)
     : visibleMonthSlips;
 
-  const weeklySpendReport = await buildWeeklyCategorySpendReport(session!.restaurant);
+  const [weeklySpendReport, monthlyMaterialCost] = await Promise.all([
+    buildWeeklyCategorySpendReport(session!.restaurant),
+    getMonthlyMaterialCost(month),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -55,7 +60,7 @@ export default async function SlipsPage({
         </Link>
       </div>
 
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-stretch">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
         <MonthCalendar
           basePath="/slips"
           month={month}
@@ -64,6 +69,7 @@ export default async function SlipsPage({
           draftDates={draftDates}
           draftLegendLabel="임시저장된 거래명세표가 있는 날짜"
           selectedDate={selectedDate ?? undefined}
+          headerAction={<ProfitCalculatorButton month={month} cost={monthlyMaterialCost} />}
         />
         <WeeklyCategorySpendPanel report={weeklySpendReport} />
       </div>

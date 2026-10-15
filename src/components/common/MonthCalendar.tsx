@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { currentMonthStr, shiftMonth, todayStr } from "@/lib/month-range";
 
@@ -43,6 +44,7 @@ export default function MonthCalendar({
   draftDates,
   draftLegendLabel,
   selectedDate,
+  headerAction,
 }: {
   basePath: string;
   month: string;
@@ -53,6 +55,8 @@ export default function MonthCalendar({
   draftLegendLabel?: string;
   /** 현재 목록이 필터링된 날짜(YYYY-MM-DD). 지정하면 달력에서 해당 날짜가 강조된다. */
   selectedDate?: string;
+  /** 월 제목 오른쪽(다음달 버튼 옆)에 붙는 추가 버튼. */
+  headerAction?: ReactNode;
 }) {
   const router = useRouter();
   const today = todayStr();
@@ -90,17 +94,21 @@ export default function MonthCalendar({
         <span className="text-sm font-bold text-gray-800">
           {year}년 {monthIdx + 1}월
         </span>
-        {canGoNext ? (
-          <button
-            type="button"
-            onClick={() => goToMonth(1)}
-            className="rounded p-1.5 text-xs font-bold text-gray-500 hover:bg-gray-100 mobile:px-3 mobile:py-2.5"
-          >
-            다음달 &gt;
-          </button>
-        ) : (
-          <span className="p-1.5 text-xs font-bold text-transparent mobile:px-3 mobile:py-2.5">다음달 &gt;</span>
-        )}
+        <div className="flex items-center gap-1">
+          {canGoNext && (
+            <button
+              type="button"
+              onClick={() => goToMonth(1)}
+              className="rounded p-1.5 text-xs font-bold text-gray-500 hover:bg-gray-100 mobile:px-3 mobile:py-2.5"
+            >
+              다음달 &gt;
+            </button>
+          )}
+          {headerAction}
+          {!canGoNext && !headerAction && (
+            <span className="p-1.5 text-xs font-bold text-transparent mobile:px-3 mobile:py-2.5">다음달 &gt;</span>
+          )}
+        </div>
       </div>
 
       <div className="mb-2 grid grid-cols-7 gap-1 text-center text-xs font-bold text-gray-500">

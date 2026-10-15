@@ -1,9 +1,6 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { getSession } from "@/lib/session";
-import MealTimeSettingsPanel from "@/components/meal/MealTimeSettingsPanel";
-import MealDailySchedulePanel from "@/components/meal/MealDailySchedulePanel";
-import CollapsibleSettingsSection from "@/components/dashboard/CollapsibleSettingsSection";
 
 export default async function DashboardPage() {
   const session = await getSession();
@@ -31,8 +28,6 @@ export default async function DashboardPage() {
     { label: "거래명세표 입력", href: "/slips/new" },
     { label: "검수일지", href: "/inspection" },
     { label: "납품보고서", href: "/reports" },
-    { label: "식수 정산하기", href: "/meal-settlement" },
-    { label: "식사 체크인", href: "/meal-checkin" },
   ];
 
   return (
@@ -59,7 +54,7 @@ export default async function DashboardPage() {
 
       <div>
         <h2 className="mb-2 text-sm font-semibold text-gray-900">바로가기</h2>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           {quickLinks.map((link) => (
             <Link
               key={link.href}
@@ -71,11 +66,6 @@ export default async function DashboardPage() {
           ))}
         </div>
       </div>
-
-      <CollapsibleSettingsSection>
-        <MealTimeSettingsPanel />
-        <MealDailySchedulePanel />
-      </CollapsibleSettingsSection>
     </div>
   );
 }

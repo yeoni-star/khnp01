@@ -8,7 +8,6 @@ const NAV_ITEMS = [
   { href: "/slips", label: "거래명세표" },
   { href: "/unmatched-items", label: "미등록 품목" },
   { href: "/inspection", label: "검수일지" },
-  { href: "/meal-settlement", label: "식수 정산" },
   { href: "/reports", label: "기간별 납품보고서" },
 ];
 

@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "고리 구내식당 관리 시스템",
-  description: "고리 구내식당 식재료 및 식수 관리 시스템",
+  description: "고리 구내식당 식재료 관리 시스템",
 };
 
 export default function RootLayout({

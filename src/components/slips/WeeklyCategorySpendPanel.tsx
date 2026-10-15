@@ -11,9 +11,25 @@ export default function WeeklyCategorySpendPanel({ report }: { report: WeeklyCat
   const lowSample = report.thisMonthDaysElapsed < 7;
 
   return (
-    <div className="flex w-full flex-col rounded-md border border-gray-200 bg-white p-4">
-      <h2 className="mb-1 text-sm font-semibold text-gray-900">카테고리별 주간 평균 사용 금액</h2>
-      <p className="mb-3 text-xs text-gray-500">
+    <details className="group w-full rounded-md border border-gray-200 bg-white p-4">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-2 [&::-webkit-details-marker]:hidden">
+        <h2 className="text-sm font-semibold text-gray-900">카테고리별 주간 평균 사용 금액</h2>
+        <span className="flex shrink-0 items-center gap-1 text-xs text-gray-500">
+          <span className="group-open:hidden">펼치기</span>
+          <span className="hidden group-open:inline">접기</span>
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            className="h-4 w-4 transition-transform group-open:rotate-180"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 9l6 6 6-6" />
+          </svg>
+        </span>
+      </summary>
+      <p className="mb-3 mt-3 text-xs text-gray-500">
         각 달의 확정 금액을 경과일수 ÷ 7로 나눠 하루 평균 사용 페이스를 1주 단위로 환산한 값이에요. 그래서{" "}
         {formatMonthLabel(report.lastMonthLabel)} 전체와 {formatMonthLabel(report.thisMonthLabel)}{" "}
         {report.thisMonthDaysElapsed}일치를 공평하게 비교할 수 있어요.
@@ -71,6 +87,6 @@ export default function WeeklyCategorySpendPanel({ report }: { report: WeeklyCat
           })}
         </div>
       )}
-    </div>
+    </details>
   );
 }
