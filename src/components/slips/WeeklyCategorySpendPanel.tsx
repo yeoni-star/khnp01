@@ -36,12 +36,12 @@ export default function WeeklyCategorySpendPanel({ report }: { report: WeeklyCat
             return (
               <div
                 key={row.category}
-                className="flex items-center justify-between gap-3 rounded border border-gray-100 px-3 py-2"
+                className="flex items-center justify-between gap-3 rounded border border-gray-100 px-3 py-2 mobile:flex-col mobile:items-stretch mobile:gap-1"
               >
                 <span className="w-16 shrink-0 text-sm font-medium text-gray-800">
                   {CATEGORY_LABELS[row.category]}
                 </span>
-                <div className="flex flex-1 items-center justify-end gap-4 text-right">
+                <div className="flex flex-1 items-center justify-end gap-4 text-right mobile:justify-between mobile:gap-2">
                   <div>
                     <p className="text-[11px] text-gray-400">{formatMonthLabel(report.lastMonthLabel)} 주평균</p>
                     <p className="text-sm text-gray-600">{row.lastMonthWeeklyAvg.toLocaleString()}원</p>

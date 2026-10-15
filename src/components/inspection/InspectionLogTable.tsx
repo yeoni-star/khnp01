@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import PrintButton from "@/components/reports/PrintButton";
+import DateTextInput from "@/components/common/DateTextInput";
 import DeleteInspectionLogButton from "@/components/inspection/DeleteInspectionLogButton";
 import {
   confirmInspectionLog,
@@ -241,7 +242,7 @@ export default function InspectionLogTable({
       type="button"
       onClick={handleReopen}
       disabled={pending}
-      className="rounded border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+      className="rounded border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 mobile:flex-1 mobile:py-3"
     >
       {pending ? "처리 중..." : "수정"}
     </button>
@@ -251,7 +252,7 @@ export default function InspectionLogTable({
         type="button"
         onClick={handleSave}
         disabled={pending}
-        className="rounded border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+        className="rounded border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 mobile:flex-1 mobile:py-3"
       >
         {pending ? "저장 중..." : "저장"}
       </button>
@@ -259,7 +260,7 @@ export default function InspectionLogTable({
         type="button"
         onClick={handleConfirm}
         disabled={pending}
-        className="rounded bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
+        className="rounded bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50 mobile:flex-1 mobile:py-3"
       >
         {pending ? "처리 중..." : "확정"}
       </button>
@@ -276,11 +277,11 @@ export default function InspectionLogTable({
             type="button"
             onClick={handleExport}
             disabled={exporting}
-            className="rounded border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            className="rounded border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 mobile:py-2.5"
           >
             {exporting ? "내보내는 중..." : "엑셀로 내보내기"}
           </button>
-          {statusActions}
+          <div className="flex gap-2 mobile:hidden">{statusActions}</div>
           <DeleteInspectionLogButton logId={logId} />
         </div>
       </div>
@@ -310,7 +311,7 @@ export default function InspectionLogTable({
         입고일자: {dateStr} · 검수자: {inspectorName || "-"} (인)
       </p>
 
-      <div className="flex flex-wrap items-end justify-between gap-3 rounded-md border border-gray-200 bg-white p-4 print:hidden">
+      <div className="flex flex-wrap items-end justify-between gap-3 rounded-md border border-gray-200 bg-white p-4 print:hidden mobile:flex-col mobile:items-stretch">
         <div>
           <label className="mb-1 block text-xs font-medium text-gray-600">입고일자</label>
           <p className="text-sm font-medium text-gray-900">{dateStr}</p>
@@ -324,7 +325,7 @@ export default function InspectionLogTable({
               value={inspectorName}
               onChange={(e) => setInspectorName(e.target.value)}
               placeholder="검수자명"
-              className="w-40 rounded border border-gray-300 px-2 py-1.5 text-sm"
+              className="w-40 rounded border border-gray-300 px-2 py-1.5 text-sm mobile:w-full mobile:py-2.5"
             />
           )}
         </div>
@@ -333,14 +334,167 @@ export default function InspectionLogTable({
             type="button"
             onClick={handleReimport}
             disabled={importing}
-            className="rounded border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            className="rounded border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 mobile:py-2.5"
           >
             {importing ? "불러오는 중..." : "거래명세표 다시 불러오기"}
           </button>
         )}
       </div>
 
-      <div className="overflow-x-auto rounded-md border border-gray-200 bg-white print:overflow-visible print:rounded-none print:border-0">
+      {/* 모바일(화면 전용): 품목별 카드 목록. 인쇄/데스크톱은 아래 표를 그대로 사용한다. */}
+      <div className="hidden space-y-3 mobile:block">
+        {!readOnly && columns.some((c) => c.type === "CHECK" || c.type === "DATE" || c.type === "TEXT") && (
+          <details className="rounded-md border border-gray-200 bg-white">
+            <summary className="cursor-pointer px-3 py-3 text-sm font-medium text-gray-700">컬럼 일괄 입력</summary>
+            <div className="space-y-3 border-t border-gray-100 px-3 py-3">
+              {columns.map((col) => {
+                if (col.type === "CHECK") {
+                  return (
+                    <div key={col.key} className="flex items-center justify-between gap-2">
+                      <span className="text-sm text-gray-700">{col.label}</span>
+                      <span className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => fillColumn(col.key, "O")}
+                          className="rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700"
+                        >
+                          전체 O
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => fillColumn(col.key, "X")}
+                          className="rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700"
+                        >
+                          전체 X
+                        </button>
+                      </span>
+                    </div>
+                  );
+                }
+                if (col.type === "DATE" || col.type === "TEXT") {
+                  return (
+                    <div key={col.key}>
+                      <span className="mb-1 block text-xs font-medium text-gray-600">{col.label}</span>
+                      <div className="flex items-center gap-2">
+                        {col.type === "DATE" ? (
+                          <DateTextInput
+                            value={bulkInputs[col.key] ?? ""}
+                            onChange={(v) => setBulkInputs((prev) => ({ ...prev, [col.key]: v }))}
+                            className="rounded border border-gray-300 px-2 py-2 text-gray-700"
+                          />
+                        ) : (
+                          <input
+                            type="text"
+                            value={bulkInputs[col.key] ?? ""}
+                            onChange={(e) => setBulkInputs((prev) => ({ ...prev, [col.key]: e.target.value }))}
+                            placeholder="값"
+                            className="min-w-0 flex-1 rounded border border-gray-300 px-2 py-2 text-gray-700"
+                          />
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => applyBulkValue(col.key)}
+                          className="shrink-0 rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700"
+                        >
+                          일괄적용
+                        </button>
+                      </div>
+                    </div>
+                  );
+                }
+                return null;
+              })}
+            </div>
+          </details>
+        )}
+
+        {rows.length === 0 && (
+          <p className="rounded-md border border-gray-200 bg-white px-4 py-6 text-center text-sm text-gray-400">
+            확정된 거래명세표 품목이 없습니다. 거래명세표를 먼저 확정해 주세요.
+          </p>
+        )}
+
+        {rows.map((row) => (
+          <div key={row.key} className="rounded-md border border-gray-200 bg-white p-3">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="break-words text-base font-semibold text-gray-900">{row.itemName}</p>
+                <p className="mt-0.5 break-words text-xs text-gray-500">
+                  {row.quantity} {row.unit}
+                  {row.vendorName ? ` · ${row.vendorName}` : ""}
+                </p>
+              </div>
+              {!readOnly && (
+                <button
+                  type="button"
+                  onClick={() => removeRow(row.key)}
+                  className="shrink-0 rounded border border-red-300 px-3 py-1.5 text-sm text-red-500"
+                >
+                  삭제
+                </button>
+              )}
+            </div>
+
+            {columns.length > 0 && (
+              <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-3">
+                {columns.map((col) => {
+                  const value = row.values[col.key] ?? "";
+                  const wide = col.type !== "CHECK";
+                  return (
+                    <div key={col.key} className={wide ? "col-span-2" : ""}>
+                      <span className="mb-1 block text-xs font-medium text-gray-500">{col.label}</span>
+                      {readOnly ? (
+                        <p className="text-sm text-gray-800">{value || "-"}</p>
+                      ) : col.type === "CHECK" ? (
+                        <button
+                          type="button"
+                          onClick={() => setCellValue(row.key, col.key, nextCheckValue(value))}
+                          className={`h-11 w-full rounded border text-base font-semibold ${
+                            value === "O"
+                              ? "border-primary-300 bg-primary-50 text-primary-700"
+                              : value === "X"
+                              ? "border-red-300 bg-red-50 text-red-700"
+                              : "border-gray-300 bg-white text-gray-300"
+                          }`}
+                        >
+                          {value || "-"}
+                        </button>
+                      ) : col.type === "DATE" ? (
+                        <DateTextInput
+                          value={value}
+                          onChange={(v) => setCellValue(row.key, col.key, v)}
+                          className="rounded border border-gray-300 px-2 py-2.5"
+                        />
+                      ) : col.type === "SELECT" ? (
+                        <select
+                          value={value}
+                          onChange={(e) => setCellValue(row.key, col.key, e.target.value)}
+                          className="w-full min-w-0 rounded border border-gray-300 px-2 py-2.5"
+                        >
+                          <option value="">선택</option>
+                          {(col.options ?? []).map((opt) => (
+                            <option key={opt} value={opt}>
+                              {opt}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <input
+                          value={value}
+                          onChange={(e) => setCellValue(row.key, col.key, e.target.value)}
+                          className="w-full min-w-0 rounded border border-gray-300 px-2 py-2.5"
+                        />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <div className="overflow-x-auto rounded-md border border-gray-200 bg-white print:overflow-visible print:rounded-none print:border-0 mobile:hidden">
         <table className="w-full min-w-max table-fixed border-collapse text-sm print:text-[10px]">
           <thead className="bg-gray-50 text-left text-xs font-medium text-gray-500 print:text-[10px]">
             <tr>
@@ -419,12 +573,11 @@ export default function InspectionLogTable({
                       </span>
                     )}
                     {col.type === "DATE" && !readOnly && (
-                      <span className="flex items-center gap-1 print:hidden">
-                        <input
-                          type="date"
+                      <span className="flex flex-col gap-1 print:hidden">
+                        <DateTextInput
                           value={bulkInputs[col.key] ?? ""}
-                          onChange={(e) => setBulkInputs((prev) => ({ ...prev, [col.key]: e.target.value }))}
-                          className="w-full min-w-0 rounded border border-gray-300 px-1 py-0.5 text-[11px] font-normal text-gray-700"
+                          onChange={(v) => setBulkInputs((prev) => ({ ...prev, [col.key]: v }))}
+                          className="rounded border border-gray-300 px-1 py-0.5 text-[11px] font-normal text-gray-700"
                         />
                         <button
                           type="button"
@@ -514,11 +667,10 @@ export default function InspectionLogTable({
                   if (col.type === "DATE") {
                     return (
                       <td key={col.key} className="border border-gray-300 px-2 py-2 print:px-1 print:py-0.5" style={{ width }}>
-                        <input
-                          type="date"
+                        <DateTextInput
                           value={value}
-                          onChange={(e) => setCellValue(row.key, col.key, e.target.value)}
-                          className="w-full min-w-0 rounded border border-gray-300 px-2 py-1 text-sm print:hidden"
+                          onChange={(v) => setCellValue(row.key, col.key, v)}
+                          className="rounded border border-gray-300 px-2 py-1 text-sm"
                         />
                         <span className="hidden print:inline">{value || "-"}</span>
                       </td>
@@ -571,15 +723,13 @@ export default function InspectionLogTable({
         </table>
       </div>
 
-      {message && (
-        <p
-          className={`text-sm print:hidden ${message.type === "error" ? "text-red-600" : "text-primary-600"}`}
-        >
-          {message.text}
-        </p>
-      )}
+      <div className="space-y-4 print:hidden mobile:sticky mobile:bottom-0 mobile:z-30 mobile:-mx-4 mobile:space-y-2 mobile:border-t mobile:border-gray-200 mobile:bg-white mobile:px-4 mobile:py-3 mobile:shadow-[0_-2px_8px_rgba(0,0,0,0.06)]">
+        {message && (
+          <p className={`text-sm ${message.type === "error" ? "text-red-600" : "text-primary-600"}`}>{message.text}</p>
+        )}
 
-      <div className="flex gap-2 print:hidden">{statusActions}</div>
+        <div className="flex gap-2">{statusActions}</div>
+      </div>
     </div>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import DateTextInput from "@/components/common/DateTextInput";
 
 export default function NewInspectionForm() {
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
@@ -11,20 +12,22 @@ export default function NewInspectionForm() {
     <form
       onSubmit={(e) => {
         e.preventDefault();
+        if (!date) return;
         router.push(`/inspection/${date}`);
       }}
-      className="flex items-center gap-2"
+      className="flex items-center gap-2 mobile:w-full"
     >
-      <input
-        type="date"
-        value={date}
-        onChange={(e) => setDate(e.target.value)}
-        className="rounded border border-gray-300 px-2 py-1.5 text-sm focus:border-primary-500 focus:outline-none"
-        required
-      />
+      <div className="w-40 mobile:min-w-0 mobile:flex-1">
+        <DateTextInput
+          value={date}
+          onChange={setDate}
+          onEnter={(iso) => router.push(`/inspection/${iso}`)}
+          className="rounded border border-gray-300 px-2 py-1.5 text-sm focus:border-primary-500 focus:outline-none mobile:py-2.5"
+        />
+      </div>
       <button
         type="submit"
-        className="rounded bg-primary-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-primary-700"
+        className="shrink-0 whitespace-nowrap rounded bg-primary-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-primary-700 mobile:py-2.5"
       >
         새 검수일지
       </button>

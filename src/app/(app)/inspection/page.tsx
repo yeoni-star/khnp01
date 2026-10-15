@@ -45,16 +45,16 @@ export default async function InspectionPage({
     <div className="space-y-6">
       <InspectionNoticeModal />
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-lg font-semibold text-gray-900">식재료 검수일지</h1>
           <p className="mt-1 text-sm text-gray-600">입고일자를 선택해 검수일지를 작성하거나 확인합니다.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 mobile:w-full mobile:flex-col">
           <NewInspectionForm />
           <Link
             href="/inspection/template"
-            className="rounded border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 flex items-center"
+            className="rounded border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 flex items-center mobile:justify-center mobile:py-2.5"
           >
             양식 설정
           </Link>
@@ -71,7 +71,40 @@ export default async function InspectionPage({
         selectedDate={selectedDate ?? undefined}
       />
 
-      <div className="overflow-hidden rounded-md border border-gray-200 bg-white">
+      {/* 모바일: 표 대신 카드 목록 */}
+      <div className="hidden space-y-2 mobile:block">
+        {visibleLogs.map((log) => (
+          <Link
+            key={log.id}
+            href={`/inspection/${log.logDate.toISOString().slice(0, 10)}`}
+            className="flex items-center justify-between gap-3 rounded-md border border-gray-200 bg-white p-3 active:bg-gray-50"
+          >
+            <div className="min-w-0">
+              <p className="text-base font-semibold text-gray-900">{log.logDate.toISOString().slice(0, 10)}</p>
+              <p className="mt-0.5 truncate text-xs text-gray-500">
+                검수자 {log.inspectorName ?? "-"} · 품목 {log._count.rows}개
+              </p>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <span
+                className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                  log.status === "CONFIRMED" ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"
+                }`}
+              >
+                {log.status === "CONFIRMED" ? "확정" : "임시저장"}
+              </span>
+              <span className="text-gray-400">›</span>
+            </div>
+          </Link>
+        ))}
+        {visibleLogs.length === 0 && (
+          <p className="rounded-md border border-gray-200 bg-white px-4 py-6 text-center text-sm text-gray-400">
+            {selectedDate ? "해당 날짜에 작성된 검수일지가 없습니다." : "이번 달에 작성된 검수일지가 없습니다."}
+          </p>
+        )}
+      </div>
+
+      <div className="overflow-hidden rounded-md border border-gray-200 bg-white mobile:hidden">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 text-left text-xs font-medium text-gray-500">
             <tr>

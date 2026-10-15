@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+/* 모바일 전용 변형. 인쇄(@media print)에서는 페이지 폭이 767px 이하로 평가될 수 있어서,
+   max-md 대신 screen 미디어로 한정해 인쇄 레이아웃이 모바일 스타일의 영향을 받지 않게 한다. */
+@custom-variant mobile (@media screen and (max-width: 767px));
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -47,6 +51,15 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* iOS Safari는 글자 크기가 16px 미만인 입력칸에 포커스하면 화면을 자동 확대하므로 모바일에서는 16px로 맞춘다. */
+@media screen and (max-width: 767px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+  select,
+  textarea {
+    font-size: 16px;
+  }
 }
 
 @media print {

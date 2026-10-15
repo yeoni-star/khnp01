@@ -132,7 +132,7 @@ export default function NewSlipForm({
                   setCurrentYear(d.getFullYear());
                   setCurrentMonth(d.getMonth());
                 }}
-                className={`py-1.5 text-xs rounded transition flex items-center justify-center font-medium ${
+                className={`py-1.5 text-xs rounded transition flex items-center justify-center font-medium mobile:py-2.5 mobile:text-sm ${
                   isSelected
                     ? "bg-primary-600 text-white font-bold"
                     : !day.isCurrentMonth
@@ -152,8 +152,8 @@ export default function NewSlipForm({
       </div>
 
       {/* 2. 기존 입력 폼 영역 */}
-      <form action={formAction} className="flex-1 w-full space-y-4 rounded-md border border-gray-200 bg-white p-5 shadow-sm">
-        <div className="grid grid-cols-2 gap-4">
+      <form action={formAction} className="flex-1 w-full space-y-4 rounded-md border border-gray-200 bg-white p-5 shadow-sm mobile:p-4">
+        <div className="grid grid-cols-2 gap-4 mobile:grid-cols-1">
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-600">납품일자 *</label>
             <input
@@ -210,7 +210,7 @@ export default function NewSlipForm({
 
         <div>
           <label className="mb-1 block text-xs font-medium text-gray-600">면세/과세 *</label>
-          <div className="flex gap-6">
+          <div className="flex gap-6 mobile:gap-8 mobile:py-1">
             {TAX_TYPES.map((code) => (
               <label key={code} className="flex items-center gap-1.5 text-sm text-gray-700 cursor-pointer">
                 <input
@@ -230,7 +230,7 @@ export default function NewSlipForm({
         <button
           type="submit"
           disabled={pending}
-          className="w-full rounded bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-50 cursor-pointer transition"
+          className="w-full rounded bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-50 cursor-pointer transition mobile:py-3"
         >
           {pending ? "생성 중..." : "다음: 품목 입력"}
         </button>

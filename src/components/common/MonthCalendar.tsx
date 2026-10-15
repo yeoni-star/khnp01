@@ -78,12 +78,12 @@ export default function MonthCalendar({
   }
 
   return (
-    <div className="w-full max-w-sm rounded-md border border-gray-200 bg-white p-4">
+    <div className="w-full max-w-sm rounded-md border border-gray-200 bg-white p-4 mobile:max-w-none mobile:p-3">
       <div className="mb-3 flex items-center justify-between border-b pb-2">
         <button
           type="button"
           onClick={() => goToMonth(-1)}
-          className="rounded p-1.5 text-xs font-bold text-gray-500 hover:bg-gray-100"
+          className="rounded p-1.5 text-xs font-bold text-gray-500 hover:bg-gray-100 mobile:px-3 mobile:py-2.5"
         >
           &lt; 이전달
         </button>
@@ -94,12 +94,12 @@ export default function MonthCalendar({
           <button
             type="button"
             onClick={() => goToMonth(1)}
-            className="rounded p-1.5 text-xs font-bold text-gray-500 hover:bg-gray-100"
+            className="rounded p-1.5 text-xs font-bold text-gray-500 hover:bg-gray-100 mobile:px-3 mobile:py-2.5"
           >
             다음달 &gt;
           </button>
         ) : (
-          <span className="p-1.5 text-xs font-bold text-transparent">다음달 &gt;</span>
+          <span className="p-1.5 text-xs font-bold text-transparent mobile:px-3 mobile:py-2.5">다음달 &gt;</span>
         )}
       </div>
 
@@ -117,7 +117,7 @@ export default function MonthCalendar({
           const isDraftMarked = draftSet.has(day.date);
           const isToday = day.date === today;
           const isSelected = day.date === selectedDate;
-          const className = `relative flex flex-col items-center justify-center rounded py-1.5 text-xs font-medium transition ${
+          const className = `relative flex flex-col items-center justify-center rounded py-1.5 text-xs font-medium transition mobile:py-2.5 mobile:text-sm ${
             !day.isCurrentMonth
               ? "text-gray-300"
               : isToday

@@ -42,14 +42,14 @@ export default async function SlipsPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <div>
           <h1 className="text-lg font-semibold text-gray-900">거래명세표</h1>
           <p className="mt-1 text-sm text-gray-600">일별 거래명세표를 입력하고 관리합니다.</p>
         </div>
         <Link
           href="/slips/new"
-          className="rounded bg-primary-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-primary-700"
+          className="shrink-0 whitespace-nowrap rounded bg-primary-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-primary-700 mobile:px-4 mobile:py-2.5"
         >
           새 거래명세표
         </Link>
@@ -68,7 +68,50 @@ export default async function SlipsPage({
         <WeeklyCategorySpendPanel report={weeklySpendReport} />
       </div>
 
-      <div className="overflow-hidden rounded-md border border-gray-200 bg-white">
+      {/* 모바일: 표 대신 카드 목록 */}
+      <div className="hidden space-y-2 mobile:block">
+        {visibleSlips.map((s) => {
+          const total = s.items.reduce((sum, i) => sum + i.amount, 0);
+          return (
+            <div key={s.id} className="rounded-md border border-gray-200 bg-white p-3">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="truncate text-base font-semibold text-gray-900">{s.vendor.name}</p>
+                  <p className="mt-0.5 text-xs text-gray-500">
+                    {s.deliveryDate.toISOString().slice(0, 10)} · {TAX_TYPE_LABELS[s.taxType]} · 품목 {s.items.length}개
+                  </p>
+                </div>
+                <span
+                  className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${
+                    s.status === "CONFIRMED" ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"
+                  }`}
+                >
+                  {s.status === "CONFIRMED" ? "확정" : "임시저장"}
+                </span>
+              </div>
+              <div className="mt-3 flex items-center justify-between gap-2">
+                <p className="text-sm font-semibold text-gray-900">{total.toLocaleString()}원</p>
+                <div className="flex items-center gap-2 text-sm [&>button]:rounded [&>button]:border [&>button]:border-gray-300 [&>button]:px-3 [&>button]:py-2.5">
+                  <CopySlipButton slipId={s.id} />
+                  <Link
+                    href={`/slips/${s.id}`}
+                    className="rounded bg-primary-600 px-4 py-2.5 font-medium text-white hover:bg-primary-700"
+                  >
+                    상세
+                  </Link>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+        {visibleSlips.length === 0 && (
+          <p className="rounded-md border border-gray-200 bg-white px-4 py-6 text-center text-sm text-gray-400">
+            {selectedDate ? "해당 날짜에 등록된 거래명세표가 없습니다." : "이번 달에 등록된 거래명세표가 없습니다."}
+          </p>
+        )}
+      </div>
+
+      <div className="overflow-hidden rounded-md border border-gray-200 bg-white mobile:hidden">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 text-left text-xs font-medium text-gray-500">
             <tr>

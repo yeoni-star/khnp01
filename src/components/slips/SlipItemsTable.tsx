@@ -167,6 +167,17 @@ export default function SlipItemsTable({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
   
+  const [showHelper, setShowHelper] = useState(false);
+  const helperPanelRef = useRef<HTMLDivElement>(null);
+
+  function toggleHelper() {
+    const next = !showHelper;
+    setShowHelper(next);
+    if (next) {
+      setTimeout(() => helperPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
+    }
+  }
+
   const [searchQuery, setSearchQuery] = useState("");
   const [activeRowKey, setActiveRowKey] = useState<string | null>(null);
   const [itemTypeFilter, setItemTypeFilter] = useState<"ALL" | "CONTRACT" | "UNREGISTERED">("ALL");
@@ -500,12 +511,12 @@ export default function SlipItemsTable({
   }, [searchPool, searchQuery, itemTypeFilter]);
 
   return (
-    <div className="grid grid-cols-5 gap-4">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
       {/* 왼쪽 메인 입력 폼 영역 */}
-      <div className="col-span-3 space-y-4">
+      <div className="min-w-0 space-y-4 lg:col-span-3">
         {!readOnly && (
           <div className="rounded-md border border-gray-200 bg-white p-4 shadow-sm">
-            <div className="flex items-center justify-between border-b pb-2 mb-3">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-2 mb-3">
               <span className="text-xs font-bold text-gray-700">엑셀 업로드 (.xlsx)</span>
               <div className="flex gap-3 text-xs">
                 <a href="/api/templates/slip-excel?taxType=TAXABLE" className="text-primary-600 hover:underline">
@@ -518,7 +529,7 @@ export default function SlipItemsTable({
               </div>
             </div>
             
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <input
                 type="file"
                 ref={fileInputRef}
@@ -537,7 +548,7 @@ export default function SlipItemsTable({
                 type="button"
                 disabled={importPending}
                 onClick={() => fileInputRef.current?.click()}
-                className="flex items-center gap-1.5 rounded bg-primary-600 px-3.5 py-2 text-xs font-semibold text-white shadow-sm hover:bg-primary-700 disabled:opacity-50 transition cursor-pointer"
+                className="flex items-center gap-1.5 rounded bg-primary-600 px-3.5 py-2 text-xs font-semibold text-white shadow-sm hover:bg-primary-700 disabled:opacity-50 transition cursor-pointer mobile:py-2.5"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
@@ -556,9 +567,9 @@ export default function SlipItemsTable({
           </div>
         )}
 
-        <div className="overflow-x-auto rounded-md border border-gray-200 bg-white">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-left text-xs font-medium text-gray-500">
+        <div className="overflow-x-auto rounded-md border border-gray-200 bg-white mobile:overflow-visible mobile:border-0 mobile:bg-transparent">
+          <table className="w-full text-sm mobile:block">
+            <thead className="bg-gray-50 text-left text-xs font-medium text-gray-500 mobile:hidden">
               <tr>
                 <th className="px-2 py-2">품명</th>
                 <th className="px-2 py-2">단위</th>
@@ -569,7 +580,7 @@ export default function SlipItemsTable({
                 <th className="px-2 py-2" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-gray-100 mobile:block mobile:space-y-3 mobile:divide-y-0">
               {rows.map((row) => {
                 const contractItem = contractItems.find((c) => c.id === row.matchedContractItemId);
                 const isPriceDiff = contractItem && String(contractItem.unitPrice) !== row.unitPrice;
@@ -579,8 +590,12 @@ export default function SlipItemsTable({
                 const isTaxDiff = taxType === "TAXABLE" && (Number(row.taxAmount) || 0) !== expectedTax;
 
                 return (
-                  <tr key={row.key} className="align-top">
-                    <td className="relative px-2 py-2">
+                  <tr
+                    key={row.key}
+                    className="align-top mobile:grid mobile:grid-cols-6 mobile:gap-x-2 mobile:gap-y-2 mobile:rounded-md mobile:border mobile:border-gray-200 mobile:bg-white mobile:p-3"
+                  >
+                    <td className="relative px-2 py-2 mobile:col-span-6 mobile:p-0">
+                      <span className="mb-1 hidden text-xs font-medium text-gray-500 mobile:block">품명</span>
                       <input
                         value={row.itemName}
                         disabled={readOnly}
@@ -609,7 +624,7 @@ export default function SlipItemsTable({
                             setInlineDropdown({ rowKey: row.key, top: rect.bottom, left: rect.left, width: rect.width });
                           }
                         }}
-                        className={`w-40 rounded border px-2 py-1 text-sm disabled:bg-gray-100 ${
+                        className={`w-40 rounded border px-2 py-1 text-sm disabled:bg-gray-100 mobile:w-full mobile:py-2 ${
                           activeRowKey === row.key ? "border-primary-500 ring-1 ring-primary-500" : "border-gray-300"
                         }`}
                       />
@@ -621,7 +636,7 @@ export default function SlipItemsTable({
                             left: inlineDropdown.left,
                             width: Math.max(inlineDropdown.width, 260),
                           }}
-                          className="z-50 max-h-64 overflow-y-auto rounded-md border border-gray-200 bg-white shadow-lg"
+                          className="z-50 max-h-64 overflow-y-auto rounded-md border border-gray-200 bg-white shadow-lg mobile:max-h-44"
                         >
                           {filteredSearchItems.length === 0 && (
                             <p className="px-3 py-2 text-xs text-gray-400">검색 결과가 없습니다.</p>
@@ -634,7 +649,7 @@ export default function SlipItemsTable({
                                 e.preventDefault();
                                 applyItemToRow(row.key, item);
                               }}
-                              className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-xs hover:bg-gray-50"
+                              className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-xs hover:bg-gray-50 mobile:py-3"
                             >
                               <span className="flex min-w-0 items-center gap-1.5">
                                 <span
@@ -682,61 +697,79 @@ export default function SlipItemsTable({
                         </div>
                       )}
                     </td>
-                    <td className="px-2 py-2">
+                    <td className="px-2 py-2 mobile:col-span-2 mobile:p-0">
+                      <span className="mb-1 hidden text-xs font-medium text-gray-500 mobile:block">단위</span>
                       <input
                         value={row.unit}
                         disabled={readOnly}
                         onChange={(e) => updateRow(row.key, { unit: e.target.value })}
-                        className={`w-14 rounded border px-2 py-1 text-sm disabled:bg-gray-100 ${
+                        className={`w-14 rounded border px-2 py-1 text-sm disabled:bg-gray-100 mobile:w-full mobile:py-2 ${
                           isUnitDiff ? "border-red-400 bg-red-50" : "border-gray-300"
                         }`}
                       />
                       {isUnitDiff && <p className="mt-1 text-xs text-red-600">계약과 다름</p>}
                     </td>
-                    <td className="px-2 py-2">
+                    <td className="px-2 py-2 mobile:col-span-2 mobile:p-0">
+                      <span className="mb-1 hidden text-xs font-medium text-gray-500 mobile:block">수량</span>
                       <input
                         type="number"
+                        inputMode="decimal"
                         value={row.quantity}
                         disabled={readOnly}
                         onChange={(e) => handleQuantityChange(row.key, e.target.value)}
-                        className="w-16 rounded border border-gray-300 px-2 py-1 text-sm disabled:bg-gray-100"
+                        className="w-16 rounded border border-gray-300 px-2 py-1 text-sm disabled:bg-gray-100 mobile:w-full mobile:py-2"
                       />
                     </td>
-                    <td className="px-2 py-2">
+                    <td className="px-2 py-2 mobile:col-span-2 mobile:p-0">
+                      <span className="mb-1 hidden text-xs font-medium text-gray-500 mobile:block">단가</span>
                       <input
                         type="number"
+                        inputMode="decimal"
                         value={row.unitPrice}
                         disabled={readOnly}
                         onChange={(e) => handlePriceChange(row.key, e.target.value)}
-                        className={`w-20 rounded border px-2 py-1 text-sm disabled:bg-gray-100 ${
+                        className={`w-20 rounded border px-2 py-1 text-sm disabled:bg-gray-100 mobile:w-full mobile:py-2 ${
                           isPriceDiff ? "border-red-400 bg-red-50" : "border-gray-300"
                         }`}
                       />
                       {isPriceDiff && <p className="mt-1 text-xs text-red-600">계약단가와 다름</p>}
                     </td>
                     {taxType === "TAXABLE" && (
-                      <td className="px-2 py-2">
+                      <td className="px-2 py-2 mobile:col-span-3 mobile:p-0">
+                        <span className="mb-1 hidden text-xs font-medium text-gray-500 mobile:block">세액</span>
                         <input
                           type="number"
+                          inputMode="decimal"
                           value={row.taxAmount}
                           disabled={readOnly}
                           onChange={(e) => handleTaxAmountChange(row.key, e.target.value)}
-                          className={`w-20 rounded border px-2 py-1 text-sm disabled:bg-gray-100 ${
+                          className={`w-20 rounded border px-2 py-1 text-sm disabled:bg-gray-100 mobile:w-full mobile:py-2 ${
                             isTaxDiff ? "border-red-400 bg-red-50" : "border-gray-300"
                           }`}
                         />
                         {isTaxDiff && <p className="mt-1 text-xs text-red-600">확인필요</p>}
                       </td>
                     )}
-                    <td className="px-2 py-2 text-gray-700">
-                      {(amount + (taxType === "TAXABLE" ? Number(row.taxAmount) || 0 : 0)).toLocaleString()}
+                    <td
+                      className={`px-2 py-2 text-gray-700 mobile:flex mobile:items-center mobile:justify-between mobile:gap-2 mobile:p-0 ${
+                        taxType === "TAXABLE" ? "mobile:col-span-3 mobile:flex-col mobile:items-start mobile:justify-start mobile:gap-0" : "mobile:col-span-6"
+                      }`}
+                    >
+                      <span className="mb-1 hidden text-xs font-medium text-gray-500 mobile:mb-0 mobile:block">금액</span>
+                      <span className="mobile:block mobile:py-2 mobile:text-base mobile:font-semibold">
+                        {(amount + (taxType === "TAXABLE" ? Number(row.taxAmount) || 0 : 0)).toLocaleString()}
+                      </span>
                     </td>
-                    <td className="px-2 py-2">
+                    <td
+                      className={`px-2 py-2 mobile:col-span-6 mobile:p-0 mobile:text-right ${
+                        readOnly ? "mobile:hidden" : ""
+                      }`}
+                    >
                       {!readOnly && (
                         <button
                           type="button"
                           onClick={() => removeRow(row.key)}
-                          className="text-xs text-red-500 hover:underline"
+                          className="text-xs text-red-500 hover:underline mobile:rounded mobile:border mobile:border-red-300 mobile:px-3 mobile:py-1.5 mobile:text-sm"
                         >
                           삭제
                         </button>
@@ -750,25 +783,25 @@ export default function SlipItemsTable({
         </div>
 
         {!readOnly && (
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <button
               type="button"
               onClick={() => addRows(1)}
-              className="rounded border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 cursor-pointer"
+              className="rounded border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 cursor-pointer mobile:py-2.5"
             >
               + 1줄 추가
             </button>
             <button
               type="button"
               onClick={() => addRows(5)}
-              className="rounded border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 cursor-pointer"
+              className="rounded border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 cursor-pointer mobile:py-2.5"
             >
               + 5줄 추가
             </button>
             <button
               type="button"
               onClick={() => addRows(10)}
-              className="rounded border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 cursor-pointer"
+              className="rounded border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 cursor-pointer mobile:py-2.5"
             >
               + 10줄 추가
             </button>
@@ -781,14 +814,34 @@ export default function SlipItemsTable({
                   setMessage(null);
                 }
               }}
-              className="ml-auto rounded border border-red-300 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 cursor-pointer"
+              className="ml-auto rounded border border-red-300 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 cursor-pointer mobile:py-2.5"
             >
               입력 초기화
             </button>
           </div>
         )}
 
-        <p className="text-sm font-medium text-gray-900">
+        <button
+          type="button"
+          onClick={toggleHelper}
+          className="hidden w-full items-center justify-center gap-1.5 rounded border border-gray-300 bg-white py-2.5 text-sm font-medium text-gray-700 mobile:flex"
+        >
+          🔍 품목 검색 도우미 {showHelper ? "닫기" : "열기"}
+        </button>
+
+        {/* 합계/메시지/저장 버튼: 모바일에서는 화면 아래에 고정해서 긴 목록에서도 바로 저장할 수 있게 한다 */}
+        <div className="space-y-4 mobile:sticky mobile:bottom-0 mobile:z-30 mobile:-mx-4 mobile:space-y-2 mobile:border-t mobile:border-gray-200 mobile:bg-white mobile:px-4 mobile:py-3 mobile:shadow-[0_-2px_8px_rgba(0,0,0,0.06)]">
+        <div className="hidden mobile:block">
+          <p className="text-base font-bold text-gray-900">
+            {taxType === "TAXABLE" ? "총액" : "합계"} {(total + totalTax).toLocaleString()}원
+          </p>
+          {taxType === "TAXABLE" && (
+            <p className="text-xs text-gray-500">
+              공급가액 {total.toLocaleString()}원 · 세액 {totalTax.toLocaleString()}원
+            </p>
+          )}
+        </div>
+        <p className="text-sm font-medium text-gray-900 mobile:hidden">
           합계금액(공급가액): {total.toLocaleString()}원
           {taxType === "TAXABLE" && (
             <>
@@ -798,11 +851,11 @@ export default function SlipItemsTable({
         </p>
 
         {message && (
-          <p className={`text-sm ${message.type === "error" ? "text-red-600" : "text-green-600"}`}>{message.text}</p>
+          <p className={`text-sm mobile:text-xs ${message.type === "error" ? "text-red-600" : "text-green-600"}`}>{message.text}</p>
         )}
 
         {hasMismatch && !readOnly && (
-          <p className="text-sm font-medium text-red-600">⚠️ 계약 내용과 다른 항목(빨간색 표시)을 계약과 동일하게 수정해야 저장할 수 있습니다.</p>
+          <p className="text-sm font-medium text-red-600 mobile:text-xs">⚠️ 계약 내용과 다른 항목(빨간색 표시)을 계약과 동일하게 수정해야 저장할 수 있습니다.</p>
         )}
 
         {!readOnly && (
@@ -811,7 +864,7 @@ export default function SlipItemsTable({
               type="button"
               onClick={handleSaveDraft}
               disabled={pending || hasMismatch}
-              className="rounded border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 cursor-pointer"
+              className="rounded border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 cursor-pointer mobile:flex-1 mobile:py-3"
             >
               임시저장
             </button>
@@ -819,16 +872,17 @@ export default function SlipItemsTable({
               type="button"
               onClick={handleConfirmClick}
               disabled={pending || hasMismatch}
-              className="rounded bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50 cursor-pointer"
+              className="rounded bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50 cursor-pointer mobile:flex-1 mobile:py-3"
             >
               확정
             </button>
           </div>
         )}
+        </div>
 
         {showConfirmDialog && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-            <div className="w-80 rounded-lg bg-white p-5 shadow-xl">
+            <div className="w-80 max-w-[90vw] rounded-lg bg-white p-5 shadow-xl">
               <p className="text-sm font-medium text-gray-900">아래 금액으로 확정하시겠습니까?</p>
               <div className="mt-3 space-y-1 rounded border border-gray-200 bg-gray-50 p-3 text-sm">
                 <div className="flex justify-between">
@@ -868,8 +922,8 @@ export default function SlipItemsTable({
       </div>
 
       {/* 오른쪽 검색 도우미 패널 영역 */}
-      <div className="col-span-2">
-        <div className="sticky top-6 rounded-md border border-gray-200 bg-white p-4 shadow-sm h-[calc(100vh-8rem)] max-h-[600px] flex flex-col">
+      <div ref={helperPanelRef} className={`lg:col-span-2 ${showHelper ? "" : "mobile:hidden"}`}>
+        <div className="h-[480px] max-h-[600px] rounded-md border border-gray-200 bg-white p-4 shadow-sm flex flex-col lg:sticky lg:top-6 lg:h-[calc(100vh-8rem)]">
           <div className="border-b pb-2 mb-3">
             <h3 className="text-sm font-bold text-gray-800">🔍 품목 검색 도우미</h3>
             <p className="text-[11px] text-gray-500 mt-1">
