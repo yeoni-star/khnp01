@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { RESTAURANTS, RESTAURANT_LABELS, type RestaurantCode } from "@/lib/restaurants";
+import { currentMonthStr } from "@/lib/month-range";
 import {
   TAX_MODE_LABELS,
   computeProfit,
@@ -26,10 +27,10 @@ type HistoryEntry = {
 };
 
 const DEFAULT_PRICES = ["4000", "4500", "5600"];
-const TIER_LABELS = ["교대식수", "직원", "협력사"];
+const TIER_LABELS = ["교대", "직원", "협력사"];
 const MAX_HISTORY = 5;
 const PRICES_STORAGE_KEY = "khnp:profit-calc:prices:v1";
-// 식당별로 입력받지 않는 항목(본관은 교대식수 없음). 입력칸이 없으니 값은 항상 비어 있어 매출에 더해지지 않는다.
+// 식당별로 입력받지 않는 항목(본관은 교대 없음). 입력칸이 없으니 값은 항상 비어 있어 매출에 더해지지 않는다.
 const HIDDEN_TIERS: Record<RestaurantCode, number[]> = { A: [0], B: [] };
 
 function loadSavedPrices(): string[] {
@@ -66,6 +67,7 @@ export default function ProfitCalculatorButton({
   cost: Record<RestaurantCode, MaterialCost>;
 }) {
   const [open, setOpen] = useState(false);
+  const [noticeOpen, setNoticeOpen] = useState(false);
   const [taxMode, setTaxMode] = useState<TaxMode>("INCLUDED");
   const [initialPrices] = useState<string[]>(loadSavedPrices);
   const [savedPrices, setSavedPrices] = useState<string[]>(initialPrices);
@@ -83,6 +85,11 @@ export default function ProfitCalculatorButton({
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [open]);
+
+  const noticeText =
+    month === currentMonthStr()
+      ? "이번달 1일부터 오늘까지의 식수인원 합계를 기입하세요."
+      : `${Number(month.split("-")[1])}월 1일부터 말일까지의 식수인원 합계를 기입하세요.`;
 
   function computeResults(): Record<RestaurantCode, RestaurantResult> {
     const out = {} as Record<RestaurantCode, RestaurantResult>;
@@ -147,7 +154,10 @@ export default function ProfitCalculatorButton({
     <>
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          setOpen(true);
+          setNoticeOpen(true);
+        }}
         className="rounded border border-primary-600 px-2 py-1 text-xs font-semibold text-primary-600 hover:bg-primary-50 mobile:px-3 mobile:py-2"
       >
         손익계산
@@ -218,7 +228,7 @@ export default function ProfitCalculatorButton({
                   {TIER_LABELS.map((label, i) => (
                     <div key={label}>
                       <label className="mb-0.5 block text-[11px] text-gray-500">
-                        {i === 0 ? "교대식수(후문) 단가(원)" : `${label} 단가(원)`}
+                        {label} 단가(원)
                       </label>
                       <input
                         inputMode="numeric"
@@ -230,6 +240,27 @@ export default function ProfitCalculatorButton({
                   ))}
                 </div>
               </div>
+
+              {noticeOpen && (
+                <div
+                  role="note"
+                  className="relative flex items-start justify-between gap-2 rounded-md border border-primary-200 bg-primary-50 px-3 py-1.5 text-xs text-primary-700"
+                >
+                  <span>{noticeText}</span>
+                  <button
+                    type="button"
+                    onClick={() => setNoticeOpen(false)}
+                    aria-label="안내 닫기"
+                    className="shrink-0 rounded px-1 leading-none text-primary-600 hover:bg-primary-100"
+                  >
+                    ×
+                  </button>
+                  <span
+                    aria-hidden="true"
+                    className="absolute -bottom-1.5 left-6 h-3 w-3 rotate-45 border-b border-r border-primary-200 bg-primary-50"
+                  />
+                </div>
+              )}
 
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 {RESTAURANTS.map((r) => {
