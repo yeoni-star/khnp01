@@ -34,94 +34,27 @@ describe("buildContractOverview", () => {
     expect(current[0].status).toBe("진행중");
   });
 
-  it("종료일이 지나면 종료로 분류한다", () => {
+  it("종료일이 지나면 종료로 분류하고, 업체는 카테고리와 함께 계약없음으로 표시한다", () => {
     const { current, expired } = buildContractOverview(
       [{ id: "v1", name: "신우", contracts: [contract("c1", "PRODUCE", "2026-05-01", "2026-10-30")] }],
       TODAY
     );
     expect(expired.map((r) => r.contractId)).toEqual(["c1"]);
-    expect(current[0]).toMatchObject({ status: "계약없음", category: "PRODUCE", needsNextContract: true });
+    expect(current[0]).toMatchObject({ status: "계약없음", category: "PRODUCE" });
   });
 
-  it("차기 계약이 이미 입력된 카테고리는 빨간 표시 대상이 아니다", () => {
+  it("예정 계약만 있는 업체는 예정으로 표시하고 계약없음으로 보지 않는다", () => {
     const { current } = buildContractOverview(
-      [
-        {
-          id: "v1",
-          name: "가림",
-          contracts: [contract("c2", "MEAT", "2026-11-02", "2027-04-30"), contract("c1", "MEAT", "2026-05-01", "2026-10-31")],
-        },
-      ],
+      [{ id: "v1", name: "해도지", contracts: [contract("c2", "KIMCHI", "2026-11-02", "2027-04-30")] }],
       TODAY
     );
-    const active = current.find((r) => r.status === "진행중");
-    expect(active).toMatchObject({ needsNextContract: false });
+    expect(current).toHaveLength(1);
+    expect(current[0].status).toBe("예정");
   });
 
-  it("차기 계약이 없고 종료가 임박한 진행중 계약은 빨간 표시 대상이다", () => {
-    const { current } = buildContractOverview(
-      [{ id: "v1", name: "드림", contracts: [contract("c1", "PROCESSED", "2026-05-01", "2026-10-31")] }],
-      TODAY
-    );
-    expect(current[0]).toMatchObject({ status: "진행중", needsNextContract: true });
-  });
-
-  it("종료까지 한참 남은 진행중 계약은 차기 계약이 없어도 빨간 표시를 하지 않는다", () => {
-    const { current } = buildContractOverview(
-      [{ id: "v1", name: "드림", contracts: [contract("c1", "PROCESSED", "2026-05-01", "2027-04-30")] }],
-      TODAY
-    );
-    expect(current[0].needsNextContract).toBe(false);
-  });
-
-  it("다른 카테고리의 예정 계약은 차기 계약으로 보지 않는다", () => {
-    const { current } = buildContractOverview(
-      [
-        {
-          id: "v1",
-          name: "동부산",
-          contracts: [contract("c2", "KIMCHI", "2026-11-02", "2027-04-30"), contract("c1", "GRAIN", "2026-05-28", "2026-11-27")],
-        },
-      ],
-      TODAY
-    );
-    const grain = current.find((r) => r.category === "GRAIN");
-    expect(grain).toMatchObject({ status: "진행중", needsNextContract: true });
-  });
-
-  it("다른 업체가 맺은 같은 카테고리 차기 계약도 차기 계약으로 본다(업체가 바뀌는 경우)", () => {
-    const { current } = buildContractOverview(
-      [
-        { id: "v1", name: "신우", contracts: [contract("c1", "PRODUCE", "2026-05-01", "2026-10-31")] },
-        { id: "v2", name: "새농산", contracts: [contract("c2", "PRODUCE", "2026-11-02", "2027-04-30")] },
-      ],
-      TODAY
-    );
-    const active = current.find((r) => r.status === "진행중");
-    expect(active).toMatchObject({ needsNextContract: false });
-  });
-
-  it("계약이 끝난 업체의 카테고리를 다른 업체가 이어받았다면 새 계약 등록이 필요 없다", () => {
-    const { current } = buildContractOverview(
-      [
-        { id: "v1", name: "신우", contracts: [contract("c1", "PRODUCE", "2026-05-01", "2026-10-30")] },
-        { id: "v2", name: "새농산", contracts: [contract("c2", "PRODUCE", "2026-11-02", "2027-04-30")] },
-      ],
-      TODAY
-    );
-    const lapsed = current.find((r) => r.vendorId === "v1");
-    expect(lapsed).toMatchObject({ status: "계약없음", category: "PRODUCE", needsNextContract: false });
-  });
-
-  it("끝난 카테고리를 아무도 이어받지 않았으면 새 계약 등록이 필요하다", () => {
-    const { current } = buildContractOverview(
-      [
-        { id: "v1", name: "신우", contracts: [contract("c1", "PRODUCE", "2026-05-01", "2026-10-30")] },
-        { id: "v2", name: "드림", contracts: [contract("c2", "PROCESSED", "2026-11-02", "2027-04-30")] },
-      ],
-      TODAY
-    );
-    expect(current.find((r) => r.vendorId === "v1")).toMatchObject({ needsNextContract: true });
+  it("계약이 하나도 없는 업체는 계약없음이다", () => {
+    const { current } = buildContractOverview([{ id: "v1", name: "신규", contracts: [] }], TODAY);
+    expect(current[0]).toMatchObject({ status: "계약없음", category: null });
   });
 
   it("같은 카테고리끼리 모아서 정렬한다(진행중 → 예정 → 계약없음 순)", () => {
@@ -145,19 +78,5 @@ describe("buildContractOverview", () => {
       "바:null:계약없음",
     ]);
     expect(expired.map((r) => r.category)).toEqual(["GRAIN", "KIMCHI"]);
-  });
-
-  it("예정 계약만 있는 업체는 예정으로 표시하고 계약없음으로 보지 않는다", () => {
-    const { current } = buildContractOverview(
-      [{ id: "v1", name: "해도지", contracts: [contract("c2", "KIMCHI", "2026-11-02", "2027-04-30")] }],
-      TODAY
-    );
-    expect(current).toHaveLength(1);
-    expect(current[0]).toMatchObject({ status: "예정", needsNextContract: false });
-  });
-
-  it("계약이 하나도 없는 업체는 계약없음(빨간 표시)이다", () => {
-    const { current } = buildContractOverview([{ id: "v1", name: "신규", contracts: [] }], TODAY);
-    expect(current[0]).toMatchObject({ status: "계약없음", category: null, needsNextContract: true });
   });
 });

@@ -103,11 +103,6 @@ export default async function ContractsPage() {
                           상세
                         </Link>
                       )}
-                      {c.needsNextContract && (
-                        <Link href="/contracts/new" className="text-red-600 font-semibold hover:underline">
-                          새 계약 등록
-                        </Link>
-                      )}
                     </div>
                   </td>
                 </tr>
