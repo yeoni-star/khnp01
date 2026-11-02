@@ -6,6 +6,7 @@ import { TAX_TYPE_LABELS } from "@/lib/tax";
 import SlipItemsTable from "@/components/slips/SlipItemsTable";
 import DeleteSlipButton from "@/components/slips/DeleteSlipButton";
 import RevertSlipButton from "@/components/slips/RevertSlipButton";
+import { dedupeUnmatchedItems } from "@/lib/unmatched-options";
 
 export default async function SlipDetailPage({
   params,
@@ -24,14 +25,26 @@ export default async function SlipDetailPage({
     getActiveContractCategory(slip.vendorId, slip.deliveryDate),
   ]);
 
-  const unmatchedItems = await db.deliverySlipItem.findMany({
-    where: {
-      matchType: "NONE",
-      slip: { vendorId: slip.vendorId },
-    },
-    select: { itemName: true, unit: true, unitPrice: true },
-    distinct: ["itemName", "unit", "unitPrice"],
+  // 미등록(수기 입력) 품목 자동완성: 납품일에 유효한 계약이 있는 모든 업체의 미등록 품목 + 이 명세표 업체의 미등록 품목.
+  const validContracts = await db.contract.findMany({
+    where: { startDate: { lte: slip.deliveryDate }, endDate: { gte: slip.deliveryDate } },
+    select: { vendorId: true },
   });
+  const vendorIds = Array.from(new Set([slip.vendorId, ...validContracts.map((c) => c.vendorId)]));
+
+  const unmatchedRows = await db.deliverySlipItem.findMany({
+    where: { matchType: "NONE", slip: { vendorId: { in: vendorIds } } },
+    select: { itemName: true, unit: true, unitPrice: true, slip: { select: { vendor: { select: { name: true } } } } },
+    orderBy: { createdAt: "desc" },
+  });
+  const unmatchedItems = dedupeUnmatchedItems(
+    unmatchedRows.map((r) => ({
+      itemName: r.itemName,
+      unit: r.unit,
+      unitPrice: r.unitPrice,
+      vendorName: r.slip.vendor.name,
+    }))
+  );
 
   return (
     <div className="space-y-6">
@@ -63,11 +76,7 @@ export default async function SlipDetailPage({
           unit: i.unit,
           unitPrice: i.unitPrice,
         }))}
-        unmatchedItems={unmatchedItems.map((i) => ({
-          itemName: i.itemName,
-          unit: i.unit,
-          unitPrice: i.unitPrice,
-        }))}
+        unmatchedItems={unmatchedItems}
         initialItems={slip.items.map((i) => ({
           itemName: i.itemName,
           category: i.category,

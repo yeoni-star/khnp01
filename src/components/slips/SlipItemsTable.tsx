@@ -112,6 +112,7 @@ type UnmatchedItemOption = {
   itemName: string;
   unit: string;
   unitPrice: number;
+  vendorName: string;
 };
 
 export default function SlipItemsTable({
@@ -197,6 +198,7 @@ export default function SlipItemsTable({
       category: item.category,
       contractItemId: item.id,
       source: "계약단가" as const,
+      vendorName: undefined as string | undefined,
     }));
 
     const unmatchedOptions = unmatchedItems.map((item, idx) => ({
@@ -207,6 +209,7 @@ export default function SlipItemsTable({
       category: undefined,
       contractItemId: null,
       source: "미등록" as const,
+      vendorName: item.vendorName as string | undefined,
     }));
 
     return [...contractOptions, ...unmatchedOptions];
@@ -602,7 +605,7 @@ export default function SlipItemsTable({
                         onChange={(e) => {
                           updateRow(row.key, { itemName: e.target.value });
                           setActiveRowKey(row.key);
-                          setItemTypeFilter("CONTRACT");
+                          setItemTypeFilter("ALL");
                           setSearchQuery(e.target.value);
                           if (e.target.value.trim()) {
                             const rect = e.target.getBoundingClientRect();
@@ -618,7 +621,7 @@ export default function SlipItemsTable({
                         onFocus={(e) => {
                           setActiveRowKey(row.key);
                           if (row.itemName.trim()) {
-                            setItemTypeFilter("CONTRACT");
+                            setItemTypeFilter("ALL");
                             setSearchQuery(row.itemName);
                             const rect = e.target.getBoundingClientRect();
                             setInlineDropdown({ rowKey: row.key, top: rect.bottom, left: rect.left, width: rect.width });
@@ -660,6 +663,9 @@ export default function SlipItemsTable({
                                   {item.source}
                                 </span>
                                 <span className="truncate font-semibold text-gray-800">{item.name}</span>
+                                {item.vendorName && (
+                                  <span className="shrink-0 text-[10px] text-gray-400">{item.vendorName}</span>
+                                )}
                               </span>
                               <span className="shrink-0 text-gray-500">₩{item.price.toLocaleString()}</span>
                             </button>
@@ -998,7 +1004,7 @@ export default function SlipItemsTable({
                   <span className="text-xs font-bold text-gray-800 line-clamp-1">{item.name}</span>
                 </div>
                 <div className="text-[11px] text-gray-500 flex justify-between items-center">
-                  <span>규격: {item.unit || "-"}</span>
+                  <span>규격: {item.unit || "-"}{item.vendorName ? ` · ${item.vendorName}` : ""}</span>
                   <span className="font-bold text-gray-900 text-[14px]">₩{item.price.toLocaleString()}</span>
                 </div>
               </button>
