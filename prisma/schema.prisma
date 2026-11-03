@@ -80,6 +80,8 @@ model ContractItem {
   category   Category
   unit       String
   unitPrice  Int
+  /// 과세 거래 시 단위(계약단가 1개)당 세액. null이면 거래명세표에서 금액의 10%로 자동 계산한다.
+  taxAmount  Int?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 

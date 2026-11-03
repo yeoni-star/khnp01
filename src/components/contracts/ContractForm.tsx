@@ -11,6 +11,8 @@ type ContractItemRow = {
   itemName: string;
   unit: string;
   unitPrice: string;
+  /** 과세 거래 시 단위당 세액. 비워두면 거래명세표에서 금액의 10%로 자동 계산한다. */
+  taxAmount: string;
 };
 
 type ExistingContract = {
@@ -21,7 +23,7 @@ type ExistingContract = {
   endDate: Date;
   title: string | null;
   memo: string | null;
-  items: { itemName: string; unit: string; unitPrice: number }[];
+  items: { itemName: string; unit: string; unitPrice: number; taxAmount: number | null }[];
 };
 
 type ActionState = { ok: boolean; message?: string } | null;
@@ -31,7 +33,7 @@ function toDateInputValue(d: Date) {
 }
 
 function emptyRow(): ContractItemRow {
-  return { itemName: "", unit: "", unitPrice: "" };
+  return { itemName: "", unit: "", unitPrice: "", taxAmount: "" };
 }
 
 export default function ContractForm({
@@ -57,6 +59,7 @@ export default function ContractForm({
           itemName: i.itemName,
           unit: i.unit,
           unitPrice: String(i.unitPrice),
+          taxAmount: i.taxAmount === null ? "" : String(i.taxAmount),
         }))
       : [emptyRow()]
   );
@@ -129,7 +132,8 @@ export default function ContractForm({
         setItems(parsedItems.map(item => ({
           itemName: item.itemName,
           unit: item.unit,
-          unitPrice: String(item.unitPrice)
+          unitPrice: String(item.unitPrice),
+          taxAmount: ""
         })));
         setOcrMessage({ type: "success", text: `${parsedItems.length}개 품목을 인식했습니다. 검수해 주세요.` });
       } else {
@@ -167,6 +171,7 @@ export default function ContractForm({
             itemName: item.itemName,
             unit: item.unit,
             unitPrice: String(item.unitPrice),
+            taxAmount: item.taxAmount === null || item.taxAmount === undefined ? "" : String(item.taxAmount),
           }))
         );
         setOcrMessage({ type: "success", text: `엑셀에서 ${data.items.length}개 품목 단가를 가져왔습니다.` });
@@ -182,7 +187,11 @@ export default function ContractForm({
   const itemsJson = JSON.stringify(
     items
       .filter((row) => row.itemName.trim())
-      .map((row) => ({ ...row, unitPrice: Number(row.unitPrice) || 0 }))
+      .map((row) => ({
+        ...row,
+        unitPrice: Number(row.unitPrice) || 0,
+        taxAmount: row.taxAmount.trim() === "" ? null : Number(row.taxAmount),
+      }))
   );
 
   const duplicateNames = new Set<string>();
@@ -377,12 +386,17 @@ export default function ContractForm({
             ⚠️ 중복된 품명이 있습니다. 빨간색 테두리로 표시된 항목을 확인해 주세요.
           </p>
         )}
+        <p className="mb-2 text-[11px] text-gray-500">
+          세액은 과세 거래용입니다. 입력하면 거래명세표에서 <strong>입력한 세액 × 수량</strong>으로 반영되고, 비워두면 금액의
+          10%로 자동 계산됩니다.
+        </p>
         <table className="w-full text-sm">
           <thead className="text-left text-xs font-medium text-gray-500">
             <tr>
               <th className="px-2 py-1">품명</th>
               <th className="px-2 py-1">단위</th>
               <th className="px-2 py-1">단가</th>
+              <th className="px-2 py-1">세액(단위당)</th>
               <th className="px-2 py-1" />
             </tr>
           </thead>
@@ -419,6 +433,16 @@ export default function ContractForm({
                       className={`w-28 rounded border px-2 py-1 text-sm ${
                         isDuplicate ? "border-red-400 bg-red-50" : "border-gray-300"
                       }`}
+                    />
+                  </td>
+                  <td className="px-2 py-1">
+                    <input
+                      type="number"
+                      min={0}
+                      value={row.taxAmount}
+                      placeholder="자동"
+                      onChange={(e) => updateItem(index, { taxAmount: e.target.value })}
+                      className="w-24 rounded border border-gray-300 px-2 py-1 text-sm"
                     />
                   </td>
                   <td className="px-2 py-1">

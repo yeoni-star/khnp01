@@ -13,6 +13,11 @@ const itemSchema = z.object({
   itemName: z.string().trim().min(1),
   unit: z.string().trim().min(1, "품목마다 단위를 입력해 주세요."),
   unitPrice: z.coerce.number().int("단가는 정수로 입력해 주세요.").nonnegative("단가는 0 이상이어야 합니다."),
+  // 과세 거래 시 단위당 세액. 비어 있으면(null) 거래명세표에서 금액의 10%로 자동 계산한다.
+  taxAmount: z.preprocess(
+    (v) => (v === "" || v === null || v === undefined ? null : v),
+    z.coerce.number().int("세액은 정수로 입력해 주세요.").nonnegative("세액은 0 이상이어야 합니다.").nullable()
+  ),
 });
 
 const contractFormSchema = z.object({

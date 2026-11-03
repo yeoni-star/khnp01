@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { saveSlipDraft, confirmSlip } from "@/actions/slip-actions";
 import type { CategoryCode } from "@/lib/categories";
 import { findSimilarItem } from "@/lib/item-matching";
-import { computeTaxAmount, type TaxTypeCode } from "@/lib/tax";
+import { computeLineTaxAmount, computeTaxAmount, type TaxTypeCode } from "@/lib/tax";
 
 type ContractItemOption = {
   id: string;
@@ -13,6 +13,8 @@ type ContractItemOption = {
   category: CategoryCode;
   unit: string;
   unitPrice: number;
+  /** 계약 단가표에 입력된 단위당 세액. null이면 금액의 10% 자동 계산. */
+  taxAmount: number | null;
 };
 
 type MatchType = "EXACT" | "FUZZY_CONFIRMED" | "NONE";
@@ -75,7 +77,6 @@ function matchImportedRow(
   const exact = contractItems.find((c) => normalize(c.itemName) === normalized);
 
   if (exact) {
-    const amount = item.quantity * exact.unitPrice;
     return {
       key: newRowKey(),
       itemName: item.itemName,
@@ -83,7 +84,13 @@ function matchImportedRow(
       unit: exact.unit,
       quantity: String(item.quantity),
       unitPrice: String(exact.unitPrice),
-      taxAmount: taxType === "TAXABLE" ? String(item.taxAmount ?? computeTaxAmount(amount)) : "",
+      taxAmount:
+        taxType === "TAXABLE"
+          ? String(
+              item.taxAmount ??
+                computeLineTaxAmount({ quantity: item.quantity, unitPrice: exact.unitPrice, contractItem: exact })
+            )
+          : "",
       matchedContractItemId: exact.id,
       matchType: "EXACT",
       priceOverridden: false,
@@ -246,8 +253,14 @@ export default function SlipItemsTable({
         if (r.key !== targetKey) return r;
 
         const quantityNum = Number(r.quantity) || 1;
-        const amount = quantityNum * selected.price;
-        const expectedTax = taxType === "TAXABLE" ? computeTaxAmount(amount) : 0;
+        const expectedTax =
+          taxType === "TAXABLE"
+            ? computeLineTaxAmount({
+                quantity: quantityNum,
+                unitPrice: selected.price,
+                contractItem: contractItems.find((c) => c.id === selected.contractItemId),
+              })
+            : 0;
 
         return {
           ...r,
@@ -285,8 +298,14 @@ export default function SlipItemsTable({
         if (r.key !== rowKey) return r;
 
         const quantityNum = Number(r.quantity) || 1;
-        const amount = quantityNum * selected.price;
-        const expectedTax = taxType === "TAXABLE" ? computeTaxAmount(amount) : 0;
+        const expectedTax =
+          taxType === "TAXABLE"
+            ? computeLineTaxAmount({
+                quantity: quantityNum,
+                unitPrice: selected.price,
+                contractItem: contractItems.find((c) => c.id === selected.contractItemId),
+              })
+            : 0;
 
         return {
           ...r,
@@ -347,13 +366,17 @@ export default function SlipItemsTable({
       setRows((prev) =>
         prev.map((r) => {
           if (r.key !== key) return r;
-          const amount = (Number(r.quantity) || 0) * exact.unitPrice;
+          const taxForRow = computeLineTaxAmount({
+            quantity: Number(r.quantity) || 0,
+            unitPrice: exact.unitPrice,
+            contractItem: exact,
+          });
           return {
             ...r,
             category: exact.category,
             unit: exact.unit,
             unitPrice: String(exact.unitPrice),
-            taxAmount: taxType === "TAXABLE" ? String(computeTaxAmount(amount)) : r.taxAmount,
+            taxAmount: taxType === "TAXABLE" ? String(taxForRow) : r.taxAmount,
             matchedContractItemId: exact.id,
             matchType: "EXACT" as const,
             priceOverridden: false,
@@ -373,14 +396,18 @@ export default function SlipItemsTable({
       prev.map((r) => {
         if (r.key !== key || !r.suggestion) return r;
         const item = r.suggestion.item;
-        const amount = (Number(r.quantity) || 0) * item.unitPrice;
+        const taxForRow = computeLineTaxAmount({
+          quantity: Number(r.quantity) || 0,
+          unitPrice: item.unitPrice,
+          contractItem: item,
+        });
         return {
           ...r,
           itemName: item.itemName,
           category: item.category,
           unit: item.unit,
           unitPrice: String(item.unitPrice),
-          taxAmount: taxType === "TAXABLE" ? String(computeTaxAmount(amount)) : r.taxAmount,
+          taxAmount: taxType === "TAXABLE" ? String(taxForRow) : r.taxAmount,
           matchedContractItemId: item.id,
           matchType: "FUZZY_CONFIRMED" as const,
           priceOverridden: false,
@@ -399,8 +426,12 @@ export default function SlipItemsTable({
       prev.map((r) => {
         if (r.key !== key) return r;
         if (taxType !== "TAXABLE") return { ...r, quantity: value };
-        const amount = (Number(value) || 0) * (Number(r.unitPrice) || 0);
-        return { ...r, quantity: value, taxAmount: String(computeTaxAmount(amount)) };
+        const taxForRow = computeLineTaxAmount({
+          quantity: Number(value) || 0,
+          unitPrice: Number(r.unitPrice) || 0,
+          contractItem: contractItems.find((c) => c.id === r.matchedContractItemId),
+        });
+        return { ...r, quantity: value, taxAmount: String(taxForRow) };
       })
     );
   }
@@ -412,8 +443,12 @@ export default function SlipItemsTable({
         const matched = contractItems.find((c) => c.id === r.matchedContractItemId);
         const overridden = matched ? String(matched.unitPrice) !== value : r.priceOverridden;
         if (taxType !== "TAXABLE") return { ...r, unitPrice: value, priceOverridden: overridden };
-        const amount = (Number(r.quantity) || 0) * (Number(value) || 0);
-        return { ...r, unitPrice: value, priceOverridden: overridden, taxAmount: String(computeTaxAmount(amount)) };
+        const taxForRow = computeLineTaxAmount({
+          quantity: Number(r.quantity) || 0,
+          unitPrice: Number(value) || 0,
+          contractItem: matched,
+        });
+        return { ...r, unitPrice: value, priceOverridden: overridden, taxAmount: String(taxForRow) };
       })
     );
   }
@@ -589,7 +624,11 @@ export default function SlipItemsTable({
                 const isPriceDiff = contractItem && String(contractItem.unitPrice) !== row.unitPrice;
                 const isUnitDiff = contractItem && normalize(contractItem.unit) !== normalize(row.unit);
                 const amount = (Number(row.quantity) || 0) * (Number(row.unitPrice) || 0);
-                const expectedTax = computeTaxAmount(amount);
+                const expectedTax = computeLineTaxAmount({
+                  quantity: Number(row.quantity) || 0,
+                  unitPrice: Number(row.unitPrice) || 0,
+                  contractItem,
+                });
                 const isTaxDiff = taxType === "TAXABLE" && (Number(row.taxAmount) || 0) !== expectedTax;
 
                 return (

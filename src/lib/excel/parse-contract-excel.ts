@@ -4,9 +4,11 @@ export type ParsedContractExcelItem = {
   itemName: string;
   unit: string;
   unitPrice: number;
+  /** 과세 양식의 세액 열 값(단위당). 열이 없거나 비어 있으면 null. */
+  taxAmount: number | null;
 };
 
-type ColumnField = "itemName" | "unit" | "unitPrice";
+type ColumnField = "itemName" | "unit" | "unitPrice" | "taxAmount";
 
 const COLUMN_ALIASES: Record<string, ColumnField> = {
   품명: "itemName",
@@ -15,6 +17,8 @@ const COLUMN_ALIASES: Record<string, ColumnField> = {
   단가: "unitPrice",
   계약단가: "unitPrice",
   "계약단가(원)": "unitPrice",
+  세액: "taxAmount",
+  "세액(원)": "taxAmount",
 };
 
 function cellText(cell: ExcelJS.Cell): string {
@@ -27,7 +31,11 @@ function cellText(cell: ExcelJS.Cell): string {
 }
 
 function cellNumber(cell: ExcelJS.Cell): number | null {
-  const v = cell.value;
+  let v: unknown = cell.value;
+  // 수식 셀(예: 세액 = 단가의 10%)은 엑셀이 저장해 둔 계산 결과를 읽는다.
+  if (v !== null && typeof v === "object" && "formula" in v) {
+    v = (v as { result?: unknown }).result;
+  }
   if (v === null || v === undefined || v === "") return null;
   if (typeof v === "number") return v;
   const n = Number(String(v).replace(/[,₩원]/g, "").trim());
@@ -70,11 +78,13 @@ export async function parseContractExcel(buffer: Buffer): Promise<ParsedContract
 
     const unit = columnMap.unit ? cellText(row.getCell(columnMap.unit)) : "";
     const unitPrice = columnMap.unitPrice ? cellNumber(row.getCell(columnMap.unitPrice)) : null;
+    const taxAmount = columnMap.taxAmount ? cellNumber(row.getCell(columnMap.taxAmount)) : null;
 
     items.push({
       itemName,
       unit,
       unitPrice: unitPrice ?? 0,
+      taxAmount: taxAmount !== null && taxAmount >= 0 ? Math.round(taxAmount) : null,
     });
   }
 

@@ -31,7 +31,12 @@ export default async function ContractDetailPage({
           endDate: contract.endDate,
           title: contract.title,
           memo: contract.memo,
-          items: contract.items.map((i) => ({ itemName: i.itemName, unit: i.unit, unitPrice: i.unitPrice })),
+          items: contract.items.map((i) => ({
+            itemName: i.itemName,
+            unit: i.unit,
+            unitPrice: i.unitPrice,
+            taxAmount: i.taxAmount,
+          })),
         }}
       />
     </div>

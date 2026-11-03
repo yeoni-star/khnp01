@@ -75,6 +75,7 @@ export default async function SlipDetailPage({
           category: i.category,
           unit: i.unit,
           unitPrice: i.unitPrice,
+          taxAmount: i.taxAmount,
         }))}
         unmatchedItems={unmatchedItems}
         initialItems={slip.items.map((i) => ({
