@@ -224,6 +224,17 @@ export default function SlipItemsTable({
 
   const readOnly = status === "CONFIRMED";
 
+  /**
+   * 행에 연결된 계약 품목을 찾는다. 계약을 수정하면 품목 번호(ID)가 새로 만들어지므로,
+   * 저장된 번호를 못 찾으면 같은 품명의 현재 계약 품목으로 이어 붙인다(미등록 품목 제외).
+   */
+  function findContractItemForRow(row: Pick<Row, "matchedContractItemId" | "itemName" | "matchType">) {
+    const byId = contractItems.find((c) => c.id === row.matchedContractItemId);
+    if (byId || row.matchType === "NONE") return byId;
+    const name = normalize(row.itemName);
+    return contractItems.find((c) => normalize(c.itemName) === name);
+  }
+
   function handleSelectSearchItem(selected: {
     name: string;
     unit: string;
@@ -429,7 +440,7 @@ export default function SlipItemsTable({
         const taxForRow = computeLineTaxAmount({
           quantity: Number(value) || 0,
           unitPrice: Number(r.unitPrice) || 0,
-          contractItem: contractItems.find((c) => c.id === r.matchedContractItemId),
+          contractItem: findContractItemForRow(r),
         });
         return { ...r, quantity: value, taxAmount: String(taxForRow) };
       })
@@ -440,7 +451,7 @@ export default function SlipItemsTable({
     setRows((prev) =>
       prev.map((r) => {
         if (r.key !== key) return r;
-        const matched = contractItems.find((c) => c.id === r.matchedContractItemId);
+        const matched = findContractItemForRow(r);
         const overridden = matched ? String(matched.unitPrice) !== value : r.priceOverridden;
         if (taxType !== "TAXABLE") return { ...r, unitPrice: value, priceOverridden: overridden };
         const taxForRow = computeLineTaxAmount({
@@ -470,7 +481,7 @@ export default function SlipItemsTable({
       rows
         .filter((r) => r.itemName.trim())
         .map((r) => {
-          const matched = contractItems.find((c) => c.id === r.matchedContractItemId);
+          const matched = findContractItemForRow(r);
           const isPriceDiff = matched ? String(matched.unitPrice) !== r.unitPrice : false;
           return {
             itemName: r.itemName.trim(),
@@ -479,7 +490,7 @@ export default function SlipItemsTable({
             quantity: Number(r.quantity) || 0,
             unitPrice: Number(r.unitPrice) || 0,
             taxAmount: taxType === "TAXABLE" ? Number(r.taxAmount) || 0 : null,
-            matchedContractItemId: r.matchedContractItemId,
+            matchedContractItemId: matched?.id ?? r.matchedContractItemId,
             matchType: r.matchType,
             priceOverridden: isPriceDiff,
           };
@@ -521,7 +532,7 @@ export default function SlipItemsTable({
     taxType === "TAXABLE" ? rows.reduce((sum, r) => sum + (Number(r.taxAmount) || 0), 0) : 0;
 
   const hasMismatch = rows.some((row) => {
-    const contractItem = contractItems.find((c) => c.id === row.matchedContractItemId);
+    const contractItem = findContractItemForRow(row);
     if (!contractItem) return false;
     const isPriceDiff = String(contractItem.unitPrice) !== row.unitPrice;
     const isUnitDiff = normalize(contractItem.unit) !== normalize(row.unit);
@@ -620,7 +631,7 @@ export default function SlipItemsTable({
             </thead>
             <tbody className="divide-y divide-gray-100 mobile:block mobile:space-y-3 mobile:divide-y-0">
               {rows.map((row) => {
-                const contractItem = contractItems.find((c) => c.id === row.matchedContractItemId);
+                const contractItem = findContractItemForRow(row);
                 const isPriceDiff = contractItem && String(contractItem.unitPrice) !== row.unitPrice;
                 const isUnitDiff = contractItem && normalize(contractItem.unit) !== normalize(row.unit);
                 const amount = (Number(row.quantity) || 0) * (Number(row.unitPrice) || 0);

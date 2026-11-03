@@ -166,15 +166,24 @@ export default function ContractForm({
       }
 
       if (data.items && data.items.length > 0) {
+        const previousCount = items.filter((row) => row.itemName.trim()).length;
+        const taxCount = data.items.filter((item: { taxAmount?: number | null }) => item.taxAmount != null).length;
         setItems(
-          data.items.map((item: any) => ({
+          data.items.map((item: { itemName: string; unit: string; unitPrice: number; taxAmount?: number | null }) => ({
             itemName: item.itemName,
             unit: item.unit,
             unitPrice: String(item.unitPrice),
             taxAmount: item.taxAmount === null || item.taxAmount === undefined ? "" : String(item.taxAmount),
           }))
         );
-        setOcrMessage({ type: "success", text: `엑셀에서 ${data.items.length}개 품목 단가를 가져왔습니다.` });
+        setOcrMessage({
+          type: "success",
+          text:
+            `엑셀의 ${data.items.length}개 품목으로 단가표를 교체했습니다` +
+            (previousCount > 0 ? ` (기존 ${previousCount}개 품목은 제거됨)` : "") +
+            (taxCount > 0 ? `, 세액 ${taxCount}개 포함` : "") +
+            `. 하단의 "${isEdit ? "계약 수정" : "계약 등록"}"을 눌러야 저장됩니다.`,
+        });
       }
     } catch (error) {
       console.error("Excel import error", error);
